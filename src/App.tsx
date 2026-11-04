@@ -2,6 +2,7 @@ import Hero from './components/Hero'
 import SponsorStrip from './components/SponsorStrip'
 import ClubIntroduction from './components/ClubIntroduction'
 import ContactSection from './components/ContactSection'
+import Footer from './components/Footer'
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <ClubIntroduction />
         <ContactSection />
       </main>
+      <Footer />
     </>
   )
 }
