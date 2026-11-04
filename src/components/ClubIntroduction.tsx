@@ -2,13 +2,14 @@ import teamData from '../data/teamData.js'
 
 function ClubIntroduction() {
   return (
-    <div className="grid md:grid-cols-2">
+    <div className="bg-black md:bg-[linear-gradient(to_right,var(--color-black)_50%,var(--color-warm-white)_50%)]">
+      <div className="mx-auto grid md:w-[calc(100%_-_3rem)] md:max-w-[76rem] md:grid-cols-2">
       <section
         id="om-klubben"
-        className="bg-black px-4 py-14 text-white min-[40rem]:px-6 md:min-h-[36rem] md:px-[clamp(1.5rem,5vw,6rem)] md:py-24"
+        className="bg-black px-4 py-14 text-white min-[40rem]:px-6 md:min-h-[36rem] md:pr-8 md:pl-0 md:py-24"
         aria-labelledby="club-heading"
       >
-        <div className="mx-auto max-w-[32rem]">
+        <div className="mx-auto max-w-[32rem] md:mx-0">
           <h2 id="club-heading" className="mb-6 max-w-[22ch] text-3xl leading-tight text-balance lg:text-4xl">
             För att bowling är mer än bara bowling
           </h2>
@@ -25,10 +26,10 @@ function ClubIntroduction() {
 
       <section
         id="vara-lag"
-        className="bg-warm-white px-4 py-14 text-black min-[40rem]:px-6 md:px-[clamp(1.5rem,5vw,6rem)] md:py-24"
+        className="bg-warm-white px-4 py-14 text-black min-[40rem]:px-6 md:pr-0 md:pl-8 md:py-24"
         aria-labelledby="teams-heading"
       >
-        <div className="mx-auto max-w-[32rem]">
+        <div className="mx-auto max-w-[32rem] md:mx-0 md:max-w-none">
           <h2 id="teams-heading" className="mb-10 text-center text-3xl leading-tight lg:text-4xl">
             Våra lag
           </h2>
@@ -56,6 +57,7 @@ function ClubIntroduction() {
           </ul>
         </div>
       </section>
+      </div>
     </div>
   )
 }

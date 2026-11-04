@@ -22,9 +22,20 @@
 
 * { box-sizing: border-box; }
 
-body {
+html,
+body,
+#root {
+  width: 100%;
   margin: 0;
+  padding: 0;
+}
+
+body {
   min-width: 320px;
+}
+
+#innehall:focus {
+  outline: none;
 }
 
 h1, h2 {

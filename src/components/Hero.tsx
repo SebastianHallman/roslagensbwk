@@ -4,11 +4,11 @@ import bowlingHero from '../assets/bowling-hero.png'
 function Hero() {
   return (
     <section
-      className="relative isolate min-h-[48rem] bg-black max-[40rem]:min-h-0"
+      className="relative isolate min-h-[48rem] bg-black max-[40rem]:flex max-[40rem]:min-h-[42rem] max-[40rem]:flex-col max-[40rem]:justify-end"
       id="start"
       aria-labelledby="welcome-heading"
     >
-      <div className="absolute inset-0 -z-10 after:pointer-events-none after:absolute after:inset-0 after:bg-[linear-gradient(to_right,#000_0%,#000e_40%,transparent_50%)] after:content-[''] max-[40rem]:relative max-[40rem]:aspect-[4/3] max-[40rem]:after:bg-[linear-gradient(to_top,#000_0%,#0009_15%,transparent_45%)]">
+      <div className="absolute inset-0 -z-10 after:pointer-events-none after:absolute after:inset-0 after:bg-[linear-gradient(to_top,#000_0%,#000e_35%,#0007_58%,transparent_80%)] after:content-[''] min-[40rem]:after:bg-[linear-gradient(to_right,#000_0%,#000e_40%,transparent_50%)]">
         <img className="absolute inset-0 h-full w-full object-cover object-[65%_center] max-[40rem]:object-[75%_center]" src={bowlingHero} alt="" fetchPriority="high" />
       </div>
       <header className="mx-auto flex min-h-32 w-[calc(100%_-_3rem)] max-w-[76rem] items-center max-[40rem]:hidden">
@@ -16,7 +16,7 @@ function Hero() {
           <img className="size-19 rounded-full max-[40rem]:size-14" src={clubLogo} alt="" width="76" height="76" />
         </a>
       </header>
-      <div className="mx-auto w-[calc(100%_-_3rem)] max-w-[76rem] pt-24 pb-36 max-[40rem]:w-[calc(100%_-_2rem)] max-[40rem]:pt-3 max-[40rem]:pb-10">
+      <div className="mx-auto w-[calc(100%_-_3rem)] max-w-[76rem] pt-24 pb-36 max-[40rem]:w-[calc(100%_-_2rem)] max-[40rem]:pt-72 max-[40rem]:pb-8">
         <h1 className="m-0 max-w-[11ch] font-heading text-[clamp(2.8rem,5vw,4.5rem)] leading-[1.08] text-balance max-[40rem]:max-w-[14ch] max-[40rem]:text-[clamp(1.75rem,7.5vw,2.25rem)] max-[40rem]:leading-[1.15]" id="welcome-heading">
           <span className="mb-[.65rem] block text-[.52em] max-[40rem]:mb-0 max-[40rem]:text-[1em]">Välkommen till</span>
           Roslagens Bowlingklubb
