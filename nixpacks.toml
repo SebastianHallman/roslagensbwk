@@ -1,0 +1,3 @@
+# This nixpkgs revision provides Node.js 22.13.1 (Vite requires >=22.12).
+[phases.setup]
+nixpkgsArchive = "51ad838b03a05b1de6f9f2a0fffecee64a9788ee"
