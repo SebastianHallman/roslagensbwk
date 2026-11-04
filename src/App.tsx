@@ -1,5 +1,6 @@
 import Hero from './components/Hero'
 import SponsorStrip from './components/SponsorStrip'
+import ClubIntroduction from './components/ClubIntroduction'
 
 function App() {
   return (
@@ -8,6 +9,7 @@ function App() {
       <main id="innehall" tabIndex={-1}>
         <Hero />
         <SponsorStrip />
+        <ClubIntroduction />
       </main>
     </>
   )
