@@ -25,9 +25,9 @@ function Hero() {
           Tillsammans vässar vi tekniken och delar tävlingsglädjen.
           För nya och erfarna bowlare.
         </p>
-        <button type="button" className="mt-8 inline-flex min-h-11 items-center justify-center rounded bg-red px-8 py-2 text-white hover:bg-red/90 focus-visible:ring-2 focus-visible:ring-red/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black max-[40rem]:mt-5 max-[40rem]:font-heading">
+        <a href="#kontakt" className="mt-8 inline-flex min-h-11 items-center justify-center rounded bg-red px-8 py-2 text-white hover:bg-red/90 focus-visible:ring-2 focus-visible:ring-red/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black max-[40rem]:mt-5 max-[40rem]:font-heading">
           Kontakta oss
-        </button>
+        </a>
       </div>
     </section>
   )

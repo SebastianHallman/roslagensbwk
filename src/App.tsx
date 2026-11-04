@@ -1,6 +1,7 @@
 import Hero from './components/Hero'
 import SponsorStrip from './components/SponsorStrip'
 import ClubIntroduction from './components/ClubIntroduction'
+import ContactSection from './components/ContactSection'
 
 function App() {
   return (
@@ -10,6 +11,7 @@ function App() {
         <Hero />
         <SponsorStrip />
         <ClubIntroduction />
+        <ContactSection />
       </main>
     </>
   )
