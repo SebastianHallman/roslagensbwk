@@ -1,0 +1,8 @@
+USE roslagensbwk;
+CREATE TABLE board_members (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    role VARCHAR(100) NOT NULL,
+    name VARCHAR(150) NULL,
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    is_visible BOOLEAN NOT NULL DEFAULT TRUE
+);

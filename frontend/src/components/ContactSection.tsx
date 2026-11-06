@@ -1,8 +1,45 @@
 import contactData from '../data/contactData.js'
+import { useEffect, useState } from 'react'
+import { fetchBoardMembers } from '../api/api.js'
 
 const fieldClassName = 'mt-2 w-full rounded border border-black/20 bg-warm-white/40 px-4 py-3 text-base text-black placeholder:text-black/55 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black'
 
+type BoardMember = {
+  id: number;
+  name: string | null;
+  role: string;
+};
+
 function ContactSection() {
+  const [boardMembers, setBoardMembers] = useState<BoardMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let ignored = false;
+    const fetchBoardData = async () => {
+      try {
+        const members = await fetchBoardMembers();
+        if (!ignored) {
+          setBoardMembers(members);
+        }
+      } catch {
+        if (!ignored) {
+          setError('Kunde inte hämta styrelsemedlemmar. Försök igen senare.');
+        }
+      } finally {
+        if (!ignored) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchBoardData();
+    return () => {
+      ignored = true;
+    };
+  }, []);
+
   return (
     <section id="kontakt" className="scroll-mt-6 bg-white py-14 text-black [color-scheme:light] md:py-20" aria-labelledby="contact-heading">
       <div className="mx-auto w-[calc(100%_-_2rem)] max-w-[76rem] min-[40rem]:w-[calc(100%_-_3rem)]">
@@ -60,14 +97,24 @@ function ContactSection() {
 
             <div className="mt-8 border-t border-black/15 pt-6">
               <h3 className="mb-6 font-heading text-2xl">Styrelsen</h3>
+              {isLoading ? (
+              <p role="status">Hämtar styrelsen…</p>
+            ) : error ? (
+              <p role="alert">{error}</p>
+            ) : boardMembers.length === 0 ? (
+              <p>Inga styrelseuppgifter finns ännu.</p>
+            ) : (
               <dl className="grid gap-x-8 gap-y-6 min-[30rem]:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
-                {contactData.board.map((member) => (
+                {boardMembers.map((member) => (
                   <div key={member.id} className="min-w-0">
                     <dt className="mb-1 font-medium">{member.role}</dt>
-                    <dd className="break-words">{member.name || 'Uppgift kommer.'}</dd>
+                    <dd className="break-words">
+                      {member.name || 'Uppgift kommer.'}
+                    </dd>
                   </div>
                 ))}
               </dl>
+            )}
             </div>
           </div>
         </div>
