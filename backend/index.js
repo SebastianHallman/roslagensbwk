@@ -6,6 +6,7 @@ const cors = require('cors');
 
 const frontendOrigin = process.env.NODE_ENV === 'development' ? 'http://localhost:5173' : process.env.FRONTEND_URL;
 const boardRoutes = require('./routes/board');
+const authRoutes = require('./routes/auth');
 
 
 app.use(cors({
@@ -15,9 +16,9 @@ app.use(cors({
 if (!frontendOrigin) {
     throw new Error('FRONTEND_URL is not defined in the environment variables.');
 }
-
-app.use('/board', boardRoutes)
-
+app.use(express.json({limit: '10kb'}));
+app.use('/board', boardRoutes);
+app.use('/auth', authRoutes);
 
 app.get('/health', async (req, res) => {
     const connectionStatus = await testConnection();

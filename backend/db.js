@@ -26,4 +26,45 @@ async function getBoardMembers() {
     return rows;
 }
 
-module.exports = { testConnection, getBoardMembers };
+
+
+async function createAdminInvitation(email, tokenHash) {
+    const [result] = await pool.execute(
+        `INSERT INTO admin_email_whitelist (
+            email,
+            invitation_token_hash,
+            invitation_expires_at
+        )
+        VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY))`,
+        [email, tokenHash]
+    );
+
+    return result.insertId;
+}
+
+async function updateInviteTokenHash(email, tokenHash) {
+    const [result] = await pool.execute(
+        `UPDATE admin_email_whitelist
+        SET invitation_token_hash = ?, invitation_expires_at = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY)
+        WHERE email = ?`,
+        [tokenHash, email]
+    );
+    return result.affectedRows > 0;
+}
+
+async function getUserByEmail(email) {
+    const [rows] = await pool.execute(
+        'SELECT * FROM users WHERE email = ?',
+        [email]
+    );
+    return rows[0] ?? null;
+}
+
+module.exports = {
+    testConnection,
+    getBoardMembers,
+    createAdminInvitation,
+    updateInviteTokenHash,
+    getUserByEmail,
+};
+
