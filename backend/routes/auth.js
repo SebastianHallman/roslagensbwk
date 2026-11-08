@@ -114,8 +114,12 @@ router.post('/verify-invite', async (req, res) => {
         res.status(201).json({ message: 'Admin user created successfully' });
         
     } catch (error) {
-        console.error('Error verifying invitation token:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        if (error.code === "ER_DUP_ENTRY") {
+            res.status(409).json({ message: 'Account already exists'})
+        } else {
+            console.error('Error verifying invitation token:', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
     }
 });
 
