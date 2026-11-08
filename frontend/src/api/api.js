@@ -20,5 +20,25 @@ async function fetchBoardMembers() {
     }
 }
 
+async function signIn(email, password) {
+    try {
+        const response = await fetch(`${API_URL}/auth/signin`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password }),
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error signing in:', error);
+        throw error;
+    }
+}
 
-export { fetchBoardMembers };
+export { fetchBoardMembers, signIn };

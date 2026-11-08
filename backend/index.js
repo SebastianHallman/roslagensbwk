@@ -3,6 +3,7 @@ const app = express();
 const { testConnection } = require('./db');
 const port = process.env.PORT || 3000;
 const cors = require('cors');
+const sessionConfig = require('./auth/sessions');
 
 const frontendOrigin = process.env.NODE_ENV === 'development' ? 'http://localhost:5173' : process.env.FRONTEND_URL;
 const boardRoutes = require('./routes/board');
@@ -10,13 +11,15 @@ const authRoutes = require('./routes/auth');
 
 
 app.use(cors({
-    origin: frontendOrigin
+    origin: frontendOrigin,
+    credentials: true
 }));
 
 if (!frontendOrigin) {
     throw new Error('FRONTEND_URL is not defined in the environment variables.');
 }
 app.use(express.json({limit: '10kb'}));
+app.use(sessionConfig);
 app.use('/board', boardRoutes);
 app.use('/auth', authRoutes);
 
