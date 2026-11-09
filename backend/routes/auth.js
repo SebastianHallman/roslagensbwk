@@ -3,12 +3,12 @@ const { authenticateAdmin} = require('../auth/authentication');
 const requireAdmin = require('../auth/requireAdmin');
 const { createAdminInvitation, redeemAdminInvitation} = require('../db');
 const { hashPassword } = require('../auth/passwords');
-
+const limiter = require('../auth/rateLimiter');
 const { generateInvitationCode, hashInvitationCode } = require('../auth/invitations');
 
 const router = express.Router();
 
-router.post('/signin', async (req, res) => {
+router.post('/signin', limiter, async (req, res) => {
     const { email, password } = req.body ?? {};
 
     if (
