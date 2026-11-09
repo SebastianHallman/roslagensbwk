@@ -1,7 +1,26 @@
 const express = require('express');
-const { getBoardMembers, addBoardMember, deleteBoardMember } = require('../db');
+const { getBoardMembers, getAdminBoardMembers, addBoardMember, updateBoardMember, deleteBoardMember, reorderBoardMembers } = require('../db');
 const requireAdmin = require('../auth/requireAdmin');
 const router = express.Router();
+
+function validMember(name, role, sortOrder) {
+    return typeof name === 'string' && name.trim().length > 0 && name.trim().length <= 150 &&
+        typeof role === 'string' && role.trim().length > 0 && role.trim().length <= 100 &&
+        Number.isInteger(sortOrder) && sortOrder >= 0 && sortOrder <= 4294967295;
+}
+
+function validId(id) {
+    return /^[1-9]\d*$/.test(id) && Number(id) <= 4294967295;
+}
+
+router.get('/admin', requireAdmin, async (req, res) => {
+    try {
+        res.json(await getAdminBoardMembers());
+    } catch (error) {
+        console.error('Error fetching admin board members:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 router.get('/', async (req, res) => {
     try {
@@ -14,14 +33,14 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/add', requireAdmin, async (req, res) => {
-    const { name, role, sortOrder } = req.body;
+    const { name, role, sortOrder } = req.body ?? {};
 
-    if (!name || !role || typeof sortOrder !== 'number') {
+    if (!validMember(name, role, sortOrder)) {
         return res.status(400).json({ error: 'Invalid board member data' });
     }
 
     try {
-        const memberId = await addBoardMember(name, role, sortOrder);
+        const memberId = await addBoardMember(name.trim(), role.trim(), sortOrder);
         res.status(201).json({ id: memberId });
     } catch (error) {
         console.error('Error adding board member:', error);
@@ -29,8 +48,31 @@ router.post('/add', requireAdmin, async (req, res) => {
     }
 });
 
+router.put('/reorder', requireAdmin, async (req, res) => {
+    const { ids } = req.body ?? {};
+    if (!Array.isArray(ids) ||
+        !ids.every((id) => Number.isInteger(id) && id > 0 && id <= 4294967295) ||
+        new Set(ids).size !== ids.length) {
+        return res.status(400).json({ error: 'Invalid board member IDs' });
+    }
+
+    try {
+        const success = await reorderBoardMembers(ids);
+        if (!success) {
+            return res.status(409).json({ error: 'Board has changed. Reload and try again.' });
+        }
+        res.status(200).json({ message: 'Reorder successful' });
+    } catch (error) {
+        console.error('Error reordering board members:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+
+});
+
+
 router.delete('/delete/:id', requireAdmin, async (req, res) => {
     const { id } = req.params;
+    if (!validId(id)) return res.status(400).json({ error: 'Invalid board member ID' });
     try {
         const success = await deleteBoardMember(id);
         if (success) {
@@ -45,6 +87,21 @@ router.delete('/delete/:id', requireAdmin, async (req, res) => {
     }
 });
 
+
+router.put('/:id', requireAdmin, async (req, res) => {
+    const { name, role, sortOrder, isVisible } = req.body ?? {};
+    if (!validId(req.params.id) || !validMember(name, role, sortOrder) || typeof isVisible !== 'boolean') {
+        return res.status(400).json({ error: 'Invalid board member data' });
+    }
+    try {
+        const success = await updateBoardMember(Number(req.params.id), name.trim(), role.trim(), sortOrder, isVisible);
+        if (!success) return res.status(404).json({ error: 'Board member not found' });
+        res.json({ message: 'Board member updated successfully' });
+    } catch (error) {
+        console.error('Error updating board member:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 
 module.exports = router;

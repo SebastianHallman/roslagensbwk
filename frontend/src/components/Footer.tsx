@@ -1,4 +1,5 @@
 import clubLogo from '../assets/logo.png'
+import { Link } from 'react-router'
 
 const currentYear = new Date().getFullYear()
 
@@ -21,6 +22,7 @@ function Footer() {
               <li><a href="#om-klubben" className="inline-flex min-h-11 items-center underline underline-offset-4 hover:decoration-2">Om klubben</a></li>
               <li><a href="#vara-lag" className="inline-flex min-h-11 items-center underline underline-offset-4 hover:decoration-2">Våra lag</a></li>
               <li><a href="#kontakt" className="inline-flex min-h-11 items-center underline underline-offset-4 hover:decoration-2">Kontakt</a></li>
+              <li><Link to="/admin" className="inline-flex min-h-11 items-center underline underline-offset-4 hover:decoration-2">Administration</Link></li>
             </ul>
           </nav>
         </div>
