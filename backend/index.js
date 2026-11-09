@@ -37,9 +37,6 @@ app.get('/health', async (req, res) => {
     });
 });
 
-app.get('/ip', (req, res) => {
-    res.status(200).json({ip: req.ip, remoteAddress: req.socket.remoteAddress});
-})
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

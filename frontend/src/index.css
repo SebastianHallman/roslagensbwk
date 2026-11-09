@@ -62,3 +62,73 @@ a:focus-visible {
 }
 
 .skip-link:focus { transform: translateY(0); }
+
+.admin-page { min-height: 100svh; display: flex; flex-direction: column; }
+.admin-header { width: min(76rem, calc(100% - 3rem)); margin: 0 auto; padding: 1.5rem 0; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
+.admin-brand { display: inline-flex; align-items: center; gap: 1rem; text-decoration: none; font-family: var(--font-heading); font-size: 1.2rem; line-height: 1.15; }
+.admin-brand img { border-radius: 50%; }
+.admin-back { font-size: .8rem; text-underline-offset: .3rem; }
+.admin-layout { width: min(76rem, calc(100% - 3rem)); margin: 1rem auto 0; display: grid; grid-template-columns: 1fr 1fr; flex: 1; min-height: 35rem; }
+.admin-layout:focus { outline: none; }
+.admin-story { position: relative; isolation: isolate; display: flex; align-items: flex-end; overflow: hidden; background: #141414; }
+.admin-story::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, #000 0%, #000b 45%, #0002 100%); }
+.admin-photo { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 65% center; }
+.admin-story-content { padding: clamp(1.5rem, 4vw, 3.5rem); }
+.admin-eyebrow { font-family: var(--font-heading); font-size: .85rem; letter-spacing: .09em; text-transform: uppercase; }
+.admin-story h1 { margin: 1rem 0; font-size: clamp(2.8rem, 5vw, 4.5rem); line-height: 1.05; }
+.admin-story h1 span { color: #ff514c; }
+.admin-story-content > p:last-child { max-width: 30ch; color: var(--color-warm-white); }
+.admin-panel { display: flex; align-items: center; background: var(--color-white); color: var(--color-black); padding: clamp(1.5rem, 4vw, 4rem); color-scheme: light; border-top: 4px solid var(--color-red); }
+.admin-panel-inner { width: 100%; max-width: 26rem; margin: auto; }
+.admin-panel .admin-eyebrow { color: #9d0b06; }
+.admin-panel h2 { font-size: clamp(2rem, 4vw, 3rem); line-height: 1.15; margin: .75rem 0 1rem; }
+.admin-muted { color: #484848; font-size: .9rem; }
+.admin-form { display: grid; margin-top: 2rem; }
+.admin-form label { font-size: .9rem; margin-bottom: .5rem; }
+.admin-form input { width: 100%; min-height: 3rem; font: inherit; font-size: 1rem; border: 1px solid #777; border-radius: .25rem; background: #fff; color: #000; padding: .75rem 1rem; margin-bottom: 1.25rem; }
+.admin-form input::placeholder { color: #666; }
+.admin-panel :is(input, button):focus-visible { outline: 3px solid #000; outline-offset: 3px; }
+.admin-button { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 3rem; margin-top: .75rem; border: 0; border-radius: .25rem; padding: .8rem 1.25rem; background: var(--color-red); color: var(--color-white); font-family: var(--font-heading); font-size: 1.15rem; cursor: pointer; }
+.admin-button:hover:not(:disabled) { background: #a80b06; }
+.admin-button:disabled { opacity: .65; cursor: wait; }
+.admin-error { border-left: 3px solid var(--color-red); padding: .75rem 1rem; background: #fce8e7; color: #840904; font-size: .85rem; overflow-wrap: anywhere; }
+.admin-notice { padding: .75rem 1rem; background: #e0eddf; color: #224421; font-size: .85rem; }
+.admin-help { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #0003; color: #484848; font-size: .8rem; }
+.admin-account { margin: 2rem 0; border-block: 1px solid #0003; padding: 1.25rem 0; }
+.admin-account dt { font-size: .75rem; color: #484848; }
+.admin-account dd { margin: .25rem 0 1rem; overflow-wrap: anywhere; }
+.admin-account dd:last-child { margin-bottom: 0; }
+.admin-footer { padding: 1.75rem 1rem; text-align: center; font-size: .75rem; color: var(--color-warm-white); }
+.admin-dashboard-layout { grid-template-columns: 15rem minmax(0, 1fr); align-items: stretch; }
+.admin-dashboard-layout .admin-panel { align-items: flex-start; min-width: 0; }
+.admin-dashboard-layout .admin-panel-inner { max-width: none; margin: 0; }
+.admin-dashboard-layout .admin-account { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 2rem; align-items: baseline; }
+.admin-dashboard-layout .admin-account dd { margin: 0 0 .5rem; }
+.admin-sidebar { display: flex; flex-direction: column; align-self: stretch; gap: 1.5rem; min-width: 0; padding: 2rem 1.25rem; background: #141414; border-top: 4px solid var(--color-red); }
+.admin-sidebar .admin-eyebrow { margin: 0; }
+.admin-sidebar-email { font-size: .8rem; color: var(--color-warm-white); overflow-wrap: anywhere; margin: 0; }
+.admin-sidebar nav { flex: 1; }
+.admin-sidebar ul { display: grid; gap: .5rem; list-style: none; padding: 0; margin: 0; }
+.admin-sidebar a { display: flex; align-items: center; min-height: 3rem; padding: .75rem 1rem; border-radius: .25rem; text-decoration: none; font-family: var(--font-heading); font-size: 1.1rem; }
+.admin-sidebar a:hover { background: #ffffff12; }
+.admin-sidebar a[aria-current="page"] { background: var(--color-red); color: var(--color-white); }
+.admin-sidebar button:focus-visible { outline: 3px solid var(--color-white); outline-offset: 3px; }
+.admin-dashboard-layout .admin-tool { margin-top: 1.5rem; }
+.admin-tool { margin-top: 2.5rem; border-top: 1px solid #0003; padding-top: 2rem; }
+.admin-tool h3 { font-family: var(--font-heading); font-size: 1.7rem; line-height: 1.2; margin-bottom: 1rem; }
+.admin-tool .admin-form { max-width: 30rem; margin-top: 1.5rem; }
+.admin-invitation-result { margin-top: 1.5rem; padding: 1.25rem; border: 1px solid #0003; border-left: 4px solid var(--color-red); overflow-wrap: anywhere; }
+.admin-code { display: block; width: 100%; margin: .5rem 0 1rem; border: 1px solid #777; border-radius: .25rem; background: #fff; padding: .75rem; color: #000; font-family: monospace; font-size: 1rem; }
+@media (max-width: 48rem) {
+  .admin-header, .admin-layout { width: calc(100% - 2rem); }
+  .admin-brand span { display: none; }
+  .admin-brand img { width: 48px; height: 48px; }
+  .admin-layout { grid-template-columns: 1fr; margin-top: 0; }
+  .admin-story { min-height: 17rem; }
+  .admin-story h1 { font-size: 2.8rem; }
+  .admin-panel { padding: 2rem 1.5rem; }
+  .admin-sidebar { padding: 1.25rem; gap: 1rem; }
+  .admin-sidebar ul { grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); }
+  .admin-sidebar > .admin-button { width: auto; align-self: flex-start; margin-top: 0; }
+  .admin-dashboard-layout .admin-account { grid-template-columns: minmax(0, 1fr); }
+}

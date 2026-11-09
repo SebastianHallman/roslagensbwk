@@ -1,21 +1,21 @@
-import Hero from './components/Hero'
-import SponsorStrip from './components/SponsorStrip'
-import ClubIntroduction from './components/ClubIntroduction'
-import ContactSection from './components/ContactSection'
-import Footer from './components/Footer'
+import { BrowserRouter, Route, Routes } from 'react-router'
+import HomePage from './pages/HomePage'
+import NotFoundPage from './pages/NotFoundPage'
+import AcceptInvitationPage from './pages/AcceptInvitationPage'
+import AdminPage from './pages/AdminPage'
+import RouteFocus from './components/RouteFocus'
 
 function App() {
   return (
-    <>
-      <a className="skip-link" href="#innehall">Hoppa till innehållet</a>
-      <main id="innehall" tabIndex={-1}>
-        <Hero />
-        <SponsorStrip />
-        <ClubIntroduction />
-        <ContactSection />
-      </main>
-      <Footer />
-    </>
+    <BrowserRouter>
+      <RouteFocus />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/admin/*" element={<AdminPage />} />
+        <Route path="/acceptera-inbjudan" element={<AcceptInvitationPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 

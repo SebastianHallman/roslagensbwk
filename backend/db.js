@@ -34,6 +34,58 @@ async function addBoardMember(name, role, sortOrder) {
     return result.insertId;
 }
 
+async function getAdminBoardMembers() {
+    const [rows] = await pool.execute('SELECT * FROM board_members ORDER BY sort_order, id');
+    return rows;
+}
+
+async function updateBoardMember(id, name, role, sortOrder, isVisible) {
+    const [result] = await pool.execute(
+        'UPDATE board_members SET name = ?, role = ?, sort_order = ?, is_visible = ? WHERE id = ?',
+        [name, role, sortOrder, isVisible, id]
+    );
+    if (result.affectedRows > 0) return true;
+    const [rows] = await pool.execute('SELECT id FROM board_members WHERE id = ?', [id]);
+    return rows.length > 0;
+}
+
+async function reorderBoardMembers(ids) {
+    if (!Array.isArray(ids) ||
+        !ids.every((id) => Number.isInteger(id) && id > 0 && id <= 4294967295) ||
+        new Set(ids).size !== ids.length) {
+        return false;
+    }
+
+    const orderedIds = [...ids];
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const [rows] = await connection.execute(
+            'SELECT id FROM board_members ORDER BY id FOR UPDATE'
+        );
+        const requestedIds = new Set(orderedIds);
+        if (rows.length !== orderedIds.length || !rows.every((row) => requestedIds.has(row.id))) {
+            await connection.rollback();
+            return false;
+        }
+
+        for (let order = 0; order < orderedIds.length; order++) {
+            await connection.execute(
+                'UPDATE board_members SET sort_order = ? WHERE id = ?',
+                [order, orderedIds[order]]
+            );
+        }
+
+        await connection.commit();
+        return true;
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
+}
+
 async function deleteBoardMember(id) {
     const [result] = await pool.execute(
         'DELETE FROM board_members WHERE id = ?',
@@ -51,24 +103,17 @@ async function createAdminInvitation(email, tokenHash) {
             invitation_token_hash,
             invitation_expires_at
         )
-        VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY))`,
-        [email, tokenHash]
+        VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY))
+        ON DUPLICATE KEY UPDATE
+            invitation_token_hash = ?,
+            invitation_expires_at = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY)`,
+        [email, tokenHash, tokenHash]
     );
 
     return result.insertId;
 }
 
 
-
-async function updateInviteTokenHash(email, tokenHash) {
-    const [result] = await pool.execute(
-        `UPDATE admin_email_whitelist
-        SET invitation_token_hash = ?, invitation_expires_at = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY)
-        WHERE email = ?`,
-        [tokenHash, email]
-    );
-    return result.affectedRows > 0;
-}
 
 async function getUserByEmail(email) {
     const [rows] = await pool.execute(
@@ -128,9 +173,11 @@ async function redeemAdminInvitation(email, tokenHash, passwordHash) {
 module.exports = {
     testConnection,
     getBoardMembers,
+    getAdminBoardMembers,
+    updateBoardMember,
+    reorderBoardMembers,
     getUserById,
     createAdminInvitation,
-    updateInviteTokenHash,
     getUserByEmail,
     addBoardMember,
     deleteBoardMember,

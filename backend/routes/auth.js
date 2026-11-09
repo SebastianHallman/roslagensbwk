@@ -1,9 +1,11 @@
 const express = require('express');
 const { authenticateAdmin} = require('../auth/authentication');
 const requireAdmin = require('../auth/requireAdmin');
-const { createAdminInvitation, redeemAdminInvitation} = require('../db');
+const { createAdminInvitation, redeemAdminInvitation, getUserByEmail } = require('../db');
 const { hashPassword } = require('../auth/passwords');
 const limiter = require('../auth/rateLimiter');
+const invitationLimiter = require('../auth/invitationLimiter');
+const { isValidEmail } = require('../auth/email');
 const { generateInvitationCode, hashInvitationCode } = require('../auth/invitations');
 
 const router = express.Router();
@@ -68,28 +70,32 @@ router.get('/me', requireAdmin, (req, res) => {
 router.post('/invite', requireAdmin, async (req, res) => {
     const { email } = req.body ?? {};
 
-    if (typeof email !== 'string' || !email.trim()) {
-        return res.status(400).json({ error: 'Email is required' });
+    if (!isValidEmail(email)) {
+        return res.status(400).json({ error: 'Valid email is required' });
     }
 
     try {
+        const existingUser = await getUserByEmail(email.trim());
+        if (existingUser) {
+            return res.status(409).json({ error: 'An account for this email already exists', code: 'ACCOUNT_EXISTS' });
+        }
         const {code, hashedCode} = generateInvitationCode();
-        await createAdminInvitation(email, hashedCode);
-        res.status(201).json({ message: 'Invitation created', code });
+        await createAdminInvitation(email.trim(), hashedCode);
+        res.status(201).json({ message: 'Invitation created or renewed', code });
     } catch (error) {
         console.error('Error creating invitation:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
-router.post('/verify-invite', async (req, res) => {
+router.post('/verify-invite', invitationLimiter, async (req, res) => {
     const { token, email, password } = req.body ?? {};
 
     if (typeof token !== 'string' || !token.trim()) {
         return res.status(400).json({ error: 'Token is required' });
     }
-    if (typeof email !== 'string' || !email.trim()) {
-        return res.status(400).json({ error: 'Email is required' });
+    if (!isValidEmail(email)) {
+        return res.status(400).json({ error: 'Valid email is required' });
     }
     if (typeof password !== 'string' || !password) {
         return res.status(400).json({ error: 'Password is required' });
@@ -105,10 +111,10 @@ router.post('/verify-invite', async (req, res) => {
 
         const passwordHash = await hashPassword(password);
         const tokenHash = hashInvitationCode(token);
-        const redemption = await redeemAdminInvitation(email, tokenHash, passwordHash);
+        const redemption = await redeemAdminInvitation(email.trim(), tokenHash, passwordHash);
 
         if (!redemption) {
-            res.status(400).json({ message: 'Expired invite'});
+            res.status(400).json({ error: 'Invalid or expired invite'});
             return null
         }
         res.status(201).json({ message: 'Admin user created successfully' });
