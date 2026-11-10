@@ -13,6 +13,8 @@ function AdminSidebar({ email, busy, onSignOut }: Props) {
       <p className="admin-sidebar-email">{email}</p>
       <nav aria-label="Adminpanel">
         <ul>
+          <li><NavLink to="/admin/tavlingar" end>Tävlingar</NavLink></li>
+          <li><NavLink to="/admin/nyheter" end>Nyheter</NavLink></li>
           <li><NavLink to="/admin/styrelsen" end>Styrelsen</NavLink></li>
           <li><NavLink to="/admin/inbjudningar" end>Inbjudningar</NavLink></li>
         </ul>
