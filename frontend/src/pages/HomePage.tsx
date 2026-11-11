@@ -1,6 +1,7 @@
 import Hero from '../components/Hero'
 import SponsorStrip from '../components/SponsorStrip'
 import ClubIntroduction from '../components/ClubIntroduction'
+import ClubUpdates from '../components/ClubUpdates'
 import ContactSection from '../components/ContactSection'
 import Footer from '../components/Footer'
 
@@ -12,6 +13,7 @@ function HomePage() {
         <Hero />
         <SponsorStrip />
         <ClubIntroduction />
+        <ClubUpdates />
         <ContactSection />
       </main>
       <Footer />

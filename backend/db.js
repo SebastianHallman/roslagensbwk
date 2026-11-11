@@ -1,4 +1,6 @@
 const mysql = require('mysql2/promise');
+const { validateTournament, validateTournamentUpdate } = require('./tournaments/validation');
+const { formatTournamentJSON } = require('./utils');
 
 const pool = mysql.createPool({
     host: process.env.DB_HOST,
@@ -20,6 +22,8 @@ async function testConnection() {
         return false;
     }
 }
+
+// MEMBERS
 
 async function getBoardMembers() {
     const [rows] = await pool.execute('SELECT * FROM board_members WHERE is_visible = TRUE ORDER BY sort_order, id');
@@ -95,7 +99,7 @@ async function deleteBoardMember(id) {
 }
 
 
-
+// ADMIN
 async function createAdminInvitation(email, tokenHash) {
     const [result] = await pool.execute(
         `INSERT INTO admin_email_whitelist (
@@ -170,6 +174,134 @@ async function redeemAdminInvitation(email, tokenHash, passwordHash) {
 }
 
 
+// TOURNAMENTS
+
+async function createTournament(tournament) {
+    const validated = validateTournament(tournament);
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.beginTransaction();
+        const t = await connection.execute(
+            'INSERT INTO tournaments (title, description, status) VALUES (?, ?, ?)',
+         [validated.title, validated.description, validated.status]);
+
+        for (const round of validated.rounds) {
+            await connection.execute(
+                'INSERT INTO rounds (tournament_id, starts_at, venue, results_url) VALUES (?, ?, ?, ?)',
+             [t[0].insertId, round.starts_at, round.venue, round.results_url ?? null])
+        }
+
+        await connection.commit();
+        return t[0].insertId;
+
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        await connection.release();
+    }
+
+}
+
+async function deleteTournament(id) {
+
+    const [result] = await pool.execute('DELETE FROM tournaments WHERE id = ?', [id]);
+
+    return result.affectedRows > 0;
+    
+}
+
+async function updateTournament(id, tournament) {
+    if (!Number.isInteger(id) || id <= 0 || id > 4294967295) {
+        const error = new Error('Tournament ID must be a positive integer within the INT UNSIGNED range.');
+        error.status = 400;
+        error.code = 'INVALID_TOURNAMENT';
+        throw error;
+    }
+    const validated = validateTournamentUpdate(tournament);
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.beginTransaction();
+        const [rows] = await connection.execute(
+            'SELECT id FROM tournaments WHERE id = ? FOR UPDATE',
+            [id]
+        );
+        if (rows.length === 0) {
+            await connection.rollback();
+            return false;
+        }
+
+        const [existingRounds] = await connection.execute(
+            'SELECT id FROM rounds WHERE tournament_id = ? FOR UPDATE',
+            [id]
+        );
+        const existingIds = new Set(existingRounds.map((round) => round.id));
+        const referencedIds = [
+            ...validated.rounds.filter((round) => round.id !== undefined).map((round) => round.id),
+            ...validated.removed_round_ids,
+        ];
+        const hasForeignRound = referencedIds.some((roundId) => !existingIds.has(roundId));
+        const finalRoundCount = existingIds.size - validated.removed_round_ids.length +
+            validated.rounds.filter((round) => round.id === undefined).length;
+        if (hasForeignRound || (validated.status === 'published' && finalRoundCount === 0)) {
+            const error = new Error(hasForeignRound
+                ? 'All round IDs must belong to the tournament being updated.'
+                : 'A published tournament must have at least one round.');
+            error.status = 400;
+            error.code = 'INVALID_TOURNAMENT';
+            throw error;
+        }
+
+        await connection.execute(
+            'UPDATE tournaments SET title = ?, description = ?, status = ? WHERE id = ?',
+            [validated.title, validated.description, validated.status, id]
+        );
+        for (const round of validated.rounds) {
+            if (round.id !== undefined) {
+                await connection.execute(
+                    'UPDATE rounds SET starts_at = ?, venue = ?, results_url = ? WHERE id = ? AND tournament_id = ?',
+                    [round.starts_at, round.venue, round.results_url, round.id, id]
+                );
+            } else {
+                await connection.execute(
+                    'INSERT INTO rounds (tournament_id, starts_at, venue, results_url) VALUES (?, ?, ?, ?)',
+                    [id, round.starts_at, round.venue, round.results_url]
+                );
+            }
+        }
+        for (const roundId of validated.removed_round_ids) {
+            await connection.execute('DELETE FROM rounds WHERE id = ? AND tournament_id = ?', [roundId, id]);
+        }
+
+        await connection.commit();
+        return true;
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
+}
+
+async function getTournaments(status = null) {
+    if (status !== null && status !== 'draft' && status !== 'published') {
+        const error = new Error('Status must be draft, published or null.');
+        error.status = 400;
+        throw error;
+    }
+    const onlyByStatus = status === null ? '' : 'WHERE t.status = ?';
+    const parameters = status === null ? [] : [status];
+    const [rows] = await pool.execute(
+        "SELECT t.id AS tournament_id, t.title, t.description, t.status, r.id AS round_id, DATE_FORMAT(r.starts_at, '%Y-%m-%d %H:%i:%s') AS starts_at, r.venue, r.results_url FROM tournaments AS t LEFT JOIN rounds AS r ON r.tournament_id = t.id " + onlyByStatus + ' ORDER BY r.starts_at, r.id',
+        parameters
+    );
+    return formatTournamentJSON(rows);
+
+}
+
+
 module.exports = {
     testConnection,
     getBoardMembers,
@@ -181,6 +313,10 @@ module.exports = {
     getUserByEmail,
     addBoardMember,
     deleteBoardMember,
-    redeemAdminInvitation
+    redeemAdminInvitation,
+    createTournament,
+    updateTournament,
+    getTournaments,
+    deleteTournament
 };
 
