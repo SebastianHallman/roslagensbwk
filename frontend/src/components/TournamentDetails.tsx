@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef } from 'react'
-import { formatClubDate, getTournamentResultsUrl, getTournamentRounds, type Tournament } from '../data/clubUpdates'
+import { formatClubDate } from '../utils/date'
+import { getTournamentResultsUrl, getTournamentRounds } from '../utils/tournaments'
+import type { Tournament } from '../types/tournament'
 
 type TournamentDetailsProps = {
   event: Tournament | null
@@ -32,7 +34,6 @@ function TournamentDetails({ event, onClose }: TournamentDetailsProps) {
         <>
           <div className="mb-6 flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="mb-2 text-xs text-black/70">Exempeltävling · datum är inte fastställt</p>
               <h2 id={titleId} className="text-3xl leading-tight wrap-break-word">{event.title}</h2>
             </div>
             <button type="button" onClick={close} className="min-h-11 shrink-0 cursor-pointer rounded border border-black/30 px-3 text-sm hover:bg-black/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black">Stäng</button>
@@ -54,7 +55,6 @@ function TournamentDetails({ event, onClose }: TournamentDetailsProps) {
             </ol>
           </div>
           <p className="text-sm">{event.description}</p>
-          <a href={event.href} onClick={close} className="mt-6 inline-flex min-h-11 items-center justify-center rounded bg-red px-5 py-3 font-heading text-white! hover:bg-red/90 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black">Fråga klubben om tävlingen →</a>
         </>
       )}
     </dialog>

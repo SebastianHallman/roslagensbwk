@@ -1,5 +1,5 @@
 import { useEffect, useRef, type FormEvent } from 'react'
-import type { ClubNews } from '../data/clubUpdates'
+import type { ClubNews } from '../types/news'
 
 export type EditableNews = ClubNews & { status: 'draft' | 'published' }
 type Props = { news: EditableNews | null; onSave: (news: EditableNews) => void; onCancel: () => void }

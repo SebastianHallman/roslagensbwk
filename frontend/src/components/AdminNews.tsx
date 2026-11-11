@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { clubNews, formatClubDate } from '../data/clubUpdates'
+import { clubNews } from '../data/clubUpdates'
+import { formatClubDate } from '../utils/date'
 import NewsEditor, { type EditableNews } from './NewsEditor'
 import NewsPreview from './NewsPreview'
 

@@ -1,4 +1,5 @@
-import { formatClubDate, type ClubNews } from '../data/clubUpdates'
+import { formatClubDate } from '../utils/date'
+import type { ClubNews } from '../types/news'
 
 function ClubNewsSection({ items }: { items: ClubNews[] }) {
   return (

@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { formatClubDate, getTournamentOccurrences, type Tournament } from '../data/clubUpdates'
+import { formatClubDate } from '../utils/date'
+import { getTournamentOccurrences } from '../utils/tournaments'
+import type { Tournament } from '../types/tournament'
 import TournamentDetails from './TournamentDetails'
 
 function TournamentTimeline({ events, date }: { events: Tournament[]; date?: string }) {

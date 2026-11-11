@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react'
-import { formatClubDate, type ClubNews } from '../data/clubUpdates'
+import { formatClubDate } from '../utils/date'
+import type { ClubNews } from '../types/news'
 
 function NewsPreview({ news, onClose }: { news: ClubNews | null; onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null)

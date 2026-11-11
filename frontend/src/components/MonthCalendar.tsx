@@ -1,4 +1,6 @@
-import { formatClubDate, getTournamentOccurrences, type Tournament } from '../data/clubUpdates'
+import { formatClubDate } from '../utils/date'
+import { getTournamentOccurrences } from '../utils/tournaments'
+import type { Tournament } from '../types/tournament'
 import TournamentTimeline from './TournamentTimeline'
 
 type MonthCalendarProps = {

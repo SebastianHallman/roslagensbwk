@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Tournament } from '../data/clubUpdates'
+import type { Tournament } from '../types/tournament'
 import MonthCalendar from './MonthCalendar'
 import TournamentTimeline from './TournamentTimeline'
 

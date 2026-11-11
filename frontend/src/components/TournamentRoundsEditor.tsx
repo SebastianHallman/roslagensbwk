@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import type { TournamentRound } from '../data/clubUpdates'
+import type { TournamentRound } from '../types/tournament'
 
 type Props = { rounds: TournamentRound[]; multiRound: boolean; onChange: (rounds: TournamentRound[]) => void }
 const fieldClass = 'min-h-12 min-w-0 w-full rounded border border-black/45 bg-[#fff] px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black'
