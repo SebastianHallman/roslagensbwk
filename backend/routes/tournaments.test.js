@@ -4,6 +4,8 @@ const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const vm = require('node:vm');
 const express = require('express');
+const utils = require('../utils');
+const jsonBody = require('../jsonBody');
 const { validateTournament, validateTournamentUpdate } = require('../tournaments/validation');
 
 function loadModule(file, dependencies) {
@@ -14,6 +16,16 @@ function loadModule(file, dependencies) {
         throw new Error(`Unexpected dependency: ${name}`);
     }, moduleMock, { error() {} });
     return moduleMock.exports;
+}
+
+function largeTournament() {
+    return {
+        title: 'Cup', description: '🎳'.repeat(1500), status: 'published',
+        rounds: Array.from({ length: 5 }, (_, index) => ({
+            starts_at: `2028-03-0${index + 1} 09:00:00`, venue: 'Hall A',
+            results_url: 'https://example.com/' + 'x'.repeat(1980),
+        })),
+    };
 }
 
 test('PUT /tournaments/:id: authorization, validation and responses', async (t) => {
@@ -31,10 +43,10 @@ test('PUT /tournaments/:id: authorization, validation and responses', async (t) 
     };
     const requireAdmin = loadModule(join(__dirname, '..', 'auth', 'requireAdmin.js'), { '../db': db });
     const router = loadModule(join(__dirname, 'tournaments.js'), {
-        express, '../db': db, '../auth/requireAdmin': requireAdmin,
+        express, '../db': db, '../auth/requireAdmin': requireAdmin, '../utils': utils,
     });
     const app = express();
-    app.use(express.json());
+    app.use(jsonBody);
     app.use((req, res, next) => {
         // Session simulation exists only in this test server.
         if (req.headers['x-test-user']) req.session = { userId: Number(req.headers['x-test-user']) };
@@ -83,6 +95,15 @@ test('PUT /tournaments/:id: authorization, validation and responses', async (t) 
         assert.deepEqual(await response.json(), { id: 7 });
         assert.deepEqual(calls.at(-1), { id: 7, input: valid });
     });
+    await t.test('accepts a valid multi-round update larger than 10 kB', async () => {
+        const input = largeTournament();
+        input.rounds[0].id = 21;
+        input.removed_round_ids = [22];
+        assert.ok(Buffer.byteLength(JSON.stringify({ tournament: input })) > 10 * 1024);
+        const response = await send('7', { tournament: input });
+        assert.equal(response.status, 200);
+        assert.deepEqual(calls.at(-1), { id: 7, input });
+    });
     await t.test('returns 404 when the tournament does not exist', async () => {
         result = false;
         const response = await send('7');
@@ -123,10 +144,10 @@ test('POST /tournaments/create: adminskydd, validering och svar', async (t) => {
     };
     const requireAdmin = loadModule(join(__dirname, '..', 'auth', 'requireAdmin.js'), { '../db': db });
     const router = loadModule(join(__dirname, 'tournaments.js'), {
-        express, '../db': db, '../auth/requireAdmin': requireAdmin,
+        express, '../db': db, '../auth/requireAdmin': requireAdmin, '../utils': utils,
     });
     const app = express();
-    app.use(express.json());
+    app.use(jsonBody);
     app.use((req, res, next) => {
         // Sessioner simuleras bara i denna isolerade testserver.
         if (req.headers['x-test-user']) req.session = { userId: Number(req.headers['x-test-user']) };
@@ -189,4 +210,31 @@ test('POST /tournaments/create: adminskydd, validering och svar', async (t) => {
         assert.deepEqual(await response.json(), { error: 'Internal Server Error' });
         assert.equal(saved.length, 1);
     });
+
+    await t.test('accepts a valid multi-round tournament larger than 10 kB', async () => {
+        failSaving = false;
+        const input = largeTournament();
+        assert.ok(Buffer.byteLength(JSON.stringify({ tournament: input })) > 10 * 1024);
+        const response = await send({ tournament: input }, 1);
+        assert.equal(response.status, 201);
+        assert.deepEqual(saved.at(-1), validateTournament(input));
+    });
+});
+
+test('JSON body limits remain bounded and specific to tournaments', async (t) => {
+    const app = express();
+    app.use(jsonBody);
+    app.use((req, res) => res.sendStatus(200));
+    app.use((error, req, res, next) => res.sendStatus(error.status || 500));
+    const server = app.listen(0, '127.0.0.1');
+    t.after(() => new Promise((resolve) => { server.close(resolve); server.closeAllConnections(); }));
+    await new Promise((resolve, reject) => { server.once('listening', resolve); server.once('error', reject); });
+    const send = (path, size) => fetch(`http://127.0.0.1:${server.address().port}${path}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: 'x'.repeat(size) }),
+    });
+    assert.equal((await send('/auth/login', 11 * 1024)).status, 413);
+    assert.equal((await send('/tournaments-other', 11 * 1024)).status, 413);
+    assert.equal((await send('/tournaments/create', 1024 * 1024)).status, 413);
+    assert.equal((await send('/tournaments/7', 1024 * 1024)).status, 413);
 });

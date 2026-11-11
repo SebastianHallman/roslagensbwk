@@ -2,6 +2,7 @@ const { testConnection } = require('./db');
 const express = require('express');
 const cors = require('cors');
 const sessionConfig = require('./auth/sessions');
+const jsonBody = require('./jsonBody');
 
 const boardRoutes = require('./routes/board');
 const authRoutes = require('./routes/auth');
@@ -24,7 +25,7 @@ app.use(cors({
 if (!frontendOrigin) {
     throw new Error('FRONTEND_URL is not defined in the environment variables.');
 }
-app.use(express.json({limit: '10kb'}));
+app.use(jsonBody);
 app.use(sessionConfig);
 app.use('/board', boardRoutes);
 app.use('/auth', authRoutes);
