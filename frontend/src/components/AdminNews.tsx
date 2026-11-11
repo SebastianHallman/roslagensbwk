@@ -32,7 +32,6 @@ function AdminNews() {
 
   return (
     <>
-      <p className="admin-muted">Berätta om det som händer i klubben. Förbered nyheter och läs dem före publicering.</p>
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm">{items.length} nyheter · {items.filter((news) => news.status === 'draft').length} utkast</p>
         <button ref={addButton} className="admin-button mt-0! w-auto!" disabled={editor !== null} onClick={() => { editTrigger.current = null; setEditor('new'); setNotice('') }}>+ Ny nyhet</button>

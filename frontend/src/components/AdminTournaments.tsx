@@ -32,7 +32,6 @@ function AdminTournaments() {
 
   return (
     <>
-      <p className="admin-muted">Planera klubbens tävlingar och förbered informationen till kalendern.</p>
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm">{events.length} tävlingar · {events.filter((event) => event.status === 'draft').length} utkast</p>
         <button ref={addButton} className="admin-button mt-0! w-auto!" disabled={editor !== null} onClick={() => { editTrigger.current = null; setEditor('new'); setNotice('') }}>+ Ny tävling</button>
