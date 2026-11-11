@@ -195,6 +195,25 @@ async function updateTournament(id, tournament) {
     return response.json();
 }
 
+async function deleteTournament(id) {
+    const response = await fetch(`${API_URL}/tournaments/delete/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+    });
+    if (!response.ok) {
+        const details = await response.json().catch(() => null);
+        const message = details?.code === 'INVALID_TOURNAMENT' && typeof details.error === 'string'
+            ? details.error
+            : `HTTP error! status: ${response.status}`;
+        const error = new Error(message);
+        error.status = response.status;
+        error.code = details?.code;
+        throw error;
+    }
+    return response.json();
+    
+}
+
 const fetchAdminBoardMembers = (signal) => boardRequest('/admin', 'GET', undefined, signal);
 const addBoardMember = (member) => boardRequest('/add', 'POST', member);
 const updateBoardMember = (id, member) => boardRequest(`/${id}`, 'PUT', member);
@@ -203,4 +222,4 @@ const reorderBoardMembers = (ids) => boardRequest('/reorder', 'PUT', { ids });
 
 export { fetchBoardMembers, signIn, signOut, getCurrentUser, createAdminInvitation, redeemInvitation,
     fetchAdminBoardMembers, addBoardMember, updateBoardMember, deleteBoardMember, reorderBoardMembers,
-    createTournament, updateTournament, fetchAdminTournaments, fetchTournaments };
+    createTournament, updateTournament, fetchAdminTournaments, fetchTournaments, deleteTournament };

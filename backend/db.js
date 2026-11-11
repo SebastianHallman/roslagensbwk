@@ -204,6 +204,14 @@ async function createTournament(tournament) {
 
 }
 
+async function deleteTournament(id) {
+
+    const [result] = await pool.execute('DELETE FROM tournaments WHERE id = ?', [id]);
+
+    return result.affectedRows > 0;
+    
+}
+
 async function updateTournament(id, tournament) {
     if (!Number.isInteger(id) || id <= 0 || id > 4294967295) {
         const error = new Error('Tournament ID must be a positive integer within the INT UNSIGNED range.');
@@ -308,6 +316,7 @@ module.exports = {
     redeemAdminInvitation,
     createTournament,
     updateTournament,
-    getTournaments
+    getTournaments,
+    deleteTournament
 };
 

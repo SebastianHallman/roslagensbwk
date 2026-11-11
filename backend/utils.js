@@ -25,4 +25,14 @@ function formatTournamentJSON(tournamentRows) {
     return [...tournaments.values()];
 }
 
-module.exports = { formatTournamentJSON };
+function validMember(name, role, sortOrder) {
+    return typeof name === 'string' && name.trim().length > 0 && name.trim().length <= 150 &&
+        typeof role === 'string' && role.trim().length > 0 && role.trim().length <= 100 &&
+        Number.isInteger(sortOrder) && sortOrder >= 0 && sortOrder <= 4294967295;
+}
+
+function validId(id) {
+    return /^[1-9]\d*$/.test(id) && Number(id) <= 4294967295;
+}
+
+module.exports = { formatTournamentJSON, validMember, validId };

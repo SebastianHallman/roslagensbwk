@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { createTournament, fetchAdminTournaments, updateTournament } from '../api/api.js'
+import { createTournament, deleteTournament, fetchAdminTournaments, updateTournament } from '../api/api.js'
 import { formatClubDate } from '../utils/date'
 import { fromApiTournament, toTournamentPayload } from '../api/tournaments'
 import type { ApiTournament, EditableTournament } from '../types/tournament'
 import TournamentEditor from './TournamentEditor'
 import TournamentDetails from './TournamentDetails'
+import ConfirmDialog from './ConfirmDialog'
 
 type Props = { onSessionExpired: () => void }
 type StatusFilter = 'all' | EditableTournament['status']
@@ -28,9 +29,12 @@ function AdminTournaments({ onSessionExpired }: Props) {
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<EditableTournament | null>(null)
   const savingRef = useRef(false)
   const addButton = useRef<HTMLButtonElement>(null)
   const isLoading = loadState === 'loading'
+  const busy = saving || deletingId !== null
   const draftCount = events.filter((event) => event.status === 'draft').length
   const visibleEvents = events
     .filter((event) => filter === 'all' || event.status === filter)
@@ -115,17 +119,45 @@ function AdminTournaments({ onSessionExpired }: Props) {
     }
   }
 
+  async function remove(event: EditableTournament) {
+    if (savingRef.current || isEditing || loadState !== 'ready') return
+
+    clearFeedback()
+    savingRef.current = true
+    setDeletingId(event.id)
+    setPreview(null)
+    try {
+      await deleteTournament(event.id)
+      setNotice(`${event.title} har tagits bort.`)
+      setLoadState('loading')
+      setReload((current) => current + 1)
+    } catch (failure) {
+      const status = failure instanceof Error && 'status' in failure ? failure.status : undefined
+      if (status === 401 || status === 403) {
+        onSessionExpired()
+        return
+      }
+      setError(status === 404
+        ? 'Tävlingen finns inte längre. Uppdatera listan.'
+        : 'Det gick inte att bekräfta borttagningen. Uppdatera listan för att kontrollera om tävlingen finns kvar innan du försöker igen.')
+    } finally {
+      savingRef.current = false
+      setDeletingId(null)
+      setDeleteTarget(null)
+    }
+  }
+
   return (
     <>
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm">{loadState === 'ready' ? `${events.length} tävlingar · ${draftCount} utkast` : 'Tävlingar'}</p>
-        <button className={actionClass} disabled={isEditing || isLoading} onClick={refresh}>
+        <button className={actionClass} disabled={isEditing || isLoading || busy} onClick={refresh}>
           {loadState === 'error' ? 'Försök igen' : 'Uppdatera'}
         </button>
         <button
           ref={addButton}
           className="admin-button mt-0! w-auto!"
-          disabled={isEditing || loadState !== 'ready'}
+          disabled={isEditing || loadState !== 'ready' || busy}
           onClick={openNewEditor}
         >
           + Ny tävling
@@ -149,7 +181,7 @@ function AdminTournaments({ onSessionExpired }: Props) {
             type="button"
             className={`${actionClass} ${filter === option.value ? 'bg-black text-white' : ''}`}
             aria-pressed={filter === option.value}
-            disabled={isEditing || loadState !== 'ready'}
+            disabled={isEditing || loadState !== 'ready' || busy}
             onClick={() => setFilter(option.value)}
           >
             {option.label}
@@ -188,18 +220,26 @@ function AdminTournaments({ onSessionExpired }: Props) {
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   className={actionClass}
-                  disabled={isEditing || saving}
+                  disabled={isEditing || busy}
                   onClick={() => { setEditedEvent(event); setIsEditing(true); clearFeedback() }}
                 >
                   Redigera<span className="sr-only"> {event.title}</span>
                 </button>
                 <button
                   className={actionClass}
-                  disabled={saving || rounds.length === 0}
+                  disabled={busy || rounds.length === 0}
                   aria-haspopup="dialog"
                   onClick={() => setPreview(event)}
                 >
                   Förhandsvisa<span className="sr-only"> {event.title}</span>
+                </button>
+                <button
+                  className={actionClass}
+                  disabled={isEditing || busy}
+                  aria-haspopup="dialog"
+                  onClick={() => setDeleteTarget(event)}
+                >
+                  {deletingId === event.id ? 'Tar bort…' : 'Ta bort'}<span className="sr-only"> {event.title}</span>
                 </button>
               </div>
             </li>
@@ -210,6 +250,16 @@ function AdminTournaments({ onSessionExpired }: Props) {
         <p className="mt-6 text-sm">{events.length === 0 ? 'Inga tävlingar skapade ännu.' : 'Inga tävlingar med den här statusen.'}</p>
       )}
       <TournamentDetails event={preview} onClose={() => setPreview(null)} />
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Ta bort tävling?"
+          message={`Vill du ta bort ”${deleteTarget.title}” och alla dess ronder? Detta går inte att ångra.`}
+          confirmLabel="Ja, ta bort"
+          pending={deletingId !== null}
+          onConfirm={() => void remove(deleteTarget)}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
     </>
   )
 }

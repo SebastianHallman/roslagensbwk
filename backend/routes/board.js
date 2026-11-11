@@ -1,17 +1,8 @@
 const express = require('express');
 const { getBoardMembers, getAdminBoardMembers, addBoardMember, updateBoardMember, deleteBoardMember, reorderBoardMembers } = require('../db');
 const requireAdmin = require('../auth/requireAdmin');
+const { validMember, validId } = require('../utils');
 const router = express.Router();
-
-function validMember(name, role, sortOrder) {
-    return typeof name === 'string' && name.trim().length > 0 && name.trim().length <= 150 &&
-        typeof role === 'string' && role.trim().length > 0 && role.trim().length <= 100 &&
-        Number.isInteger(sortOrder) && sortOrder >= 0 && sortOrder <= 4294967295;
-}
-
-function validId(id) {
-    return /^[1-9]\d*$/.test(id) && Number(id) <= 4294967295;
-}
 
 router.get('/admin', requireAdmin, async (req, res) => {
     try {
