@@ -96,7 +96,7 @@ function AdminTournaments({ onSessionExpired }: Props) {
         await createTournament(payload)
       }
       setFilter('all')
-      setNotice(`${event.title} har sparats i databasen.`)
+      setNotice('Sparat.')
       closeEditor()
       setLoadState('loading')
       setPreview(null)

@@ -1,6 +1,5 @@
 const mysql = require('mysql2/promise');
-const { validateTournament, validateTournamentUpdate } = require('./tournaments/validation');
-const { formatTournamentJSON } = require('./utils');
+const { formatTournamentJSON, validId, validateTournament, validateTournamentUpdate, validateNews } = require('./utils');
 
 const pool = mysql.createPool({
     host: process.env.DB_HOST,
@@ -55,7 +54,7 @@ async function updateBoardMember(id, name, role, sortOrder, isVisible) {
 
 async function reorderBoardMembers(ids) {
     if (!Array.isArray(ids) ||
-        !ids.every((id) => Number.isInteger(id) && id > 0 && id <= 4294967295) ||
+        !ids.every((id) => Number.isInteger(id) && validId(id)) ||
         new Set(ids).size !== ids.length) {
         return false;
     }
@@ -213,7 +212,7 @@ async function deleteTournament(id) {
 }
 
 async function updateTournament(id, tournament) {
-    if (!Number.isInteger(id) || id <= 0 || id > 4294967295) {
+    if (!Number.isInteger(id) || !validId(id)) {
         const error = new Error('Tournament ID must be a positive integer within the INT UNSIGNED range.');
         error.status = 400;
         error.code = 'INVALID_TOURNAMENT';
@@ -301,6 +300,66 @@ async function getTournaments(status = null) {
 
 }
 
+// news
+
+async function getNews(status = null) {
+    if (status !== null && status !== 'draft' && status !== 'published') {
+        const error = new Error('Status must be draft, published or null.');
+        error.status = 400;
+        throw error;
+    }
+    const onlyByStatus = status === null ? '' : 'WHERE status = ?';
+    const parameters = status === null ? [] : [status];
+    const [rows] = await pool.execute(
+        "SELECT id, title, DATE_FORMAT(date, '%Y-%m-%d') AS date, body, status, DATE_FORMAT(updated, '%Y-%m-%d %H:%i:%s') AS updated FROM news " + onlyByStatus + ' ORDER BY date DESC, id DESC',
+        parameters
+    );
+    return rows;
+}
+
+async function createNews(news) {
+    const validated = validateNews(news);
+    const date = validated.status === 'published'
+        ? new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Stockholm' })
+        : null;
+    const [result] = await pool.execute(
+        'INSERT INTO news (title, date, body, status) VALUES (?, ?, ?, ?)',
+        [validated.title, date, validated.body, validated.status]
+    );
+    return result.insertId;
+}
+
+async function updateNews(id, news) {
+    if (!Number.isInteger(id) || !validId(id)) {
+        const error = new Error('News ID must be a positive integer within the INT UNSIGNED range.');
+        error.status = 400;
+        error.code = 'INVALID_NEWS';
+        throw error;
+    }
+    const validated = validateNews(news);
+    const date = validated.status === 'published'
+        ? new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Stockholm' })
+        : null;
+    const [result] = await pool.execute(
+        'UPDATE news SET title = ?, date = COALESCE(date, ?), body = ?, status = ? WHERE id = ?',
+        [validated.title, date, validated.body, validated.status, id]
+    );
+    if (result.affectedRows > 0) return true;
+    const [rows] = await pool.execute('SELECT id FROM news WHERE id = ?', [id]);
+    return rows.length > 0;
+}
+
+
+async function deleteNews(id) {
+    if (!Number.isInteger(id) || !validId(id)) {
+        const error = new Error('News ID must be a positive integer within the INT UNSIGNED range.');
+        error.status = 400;
+        error.code = 'INVALID_NEWS';
+        throw error;
+    }
+    const [result] = await pool.execute('DELETE FROM news WHERE id = ?', [id]);
+    return result.affectedRows > 0;
+}
 
 module.exports = {
     testConnection,
@@ -317,6 +376,10 @@ module.exports = {
     createTournament,
     updateTournament,
     getTournaments,
-    deleteTournament
+    deleteTournament,
+    getNews,
+    createNews,
+    updateNews,
+    deleteNews
 };
 

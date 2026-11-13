@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const vm = require('node:vm');
-const { validateTournament } = require('./validation');
+const { validateTournament } = require('../utils');
 
 function tournament() {
     return {
@@ -102,7 +102,6 @@ test('ogiltiga indata stoppas innan anslutning; giltiga sparas i en gemensam tra
     vm.runInNewContext(source, {
         module: moduleMock, process: { env: {} }, console,
         require: (name) => {
-            if (name === './tournaments/validation') return { validateTournament };
             if (name === './utils') return require('../utils');
             if (name === 'mysql2/promise') return { createPool: () => ({ getConnection: async () => { calls.push('connect'); return connection; } }) };
             throw new Error(`Unexpected dependency: ${name}`);

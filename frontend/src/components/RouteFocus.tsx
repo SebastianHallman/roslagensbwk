@@ -5,7 +5,7 @@ function RouteFocus() {
   const { pathname } = useLocation()
   useEffect(() => {
     window.scrollTo(0, 0)
-    document.querySelector<HTMLElement>('main')?.focus()
+    document.querySelector<HTMLElement>('main')?.focus({ preventScroll: true })
   }, [pathname])
   return null
 }

@@ -7,6 +7,7 @@ const jsonBody = require('./jsonBody');
 const boardRoutes = require('./routes/board');
 const authRoutes = require('./routes/auth');
 const tournamentRoutes = require('./routes/tournaments');
+const newsRoutes = require('./routes/news');
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use(sessionConfig);
 app.use('/board', boardRoutes);
 app.use('/auth', authRoutes);
 app.use('/tournaments', tournamentRoutes);
+app.use('/news', newsRoutes);
 
 app.get('/health', async (req, res) => {
     const connectionStatus = await testConnection();
