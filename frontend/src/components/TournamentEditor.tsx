@@ -66,7 +66,6 @@ function TournamentEditor({ event, saving = false, onSave, onCancel }: Props) {
   return (
     <section className="mt-8 rounded-lg border border-black/20 border-t-4 border-t-red bg-warm-white p-5 min-[40rem]:p-7" aria-labelledby="tournament-editor-heading">
       <h3 id="tournament-editor-heading" className="font-heading text-2xl">{event ? 'Redigera tävling' : 'Ny tävling'}</h3>
-      <p className="mt-2 text-sm text-black/70">Fyll i uppgifterna som besökarna ska se. Resultatlänken är frivillig; övriga fält är obligatoriska.</p>
       <form ref={formRef} className="mt-6" onSubmit={submit} onInput={clearErrors} aria-labelledby="tournament-editor-heading" aria-busy={saving}>
         <fieldset disabled={saving} className="min-w-0 border-0 p-0">
         <label className="mb-2 block text-sm" htmlFor="event-title">Tävlingsnamn</label>
@@ -80,11 +79,10 @@ function TournamentEditor({ event, saving = false, onSave, onCancel }: Props) {
         <label className="mb-2 block text-sm" htmlFor="event-description">Beskrivning</label>
         <textarea className={`${fieldClass} resize-y`} id="event-description" name="description" rows={3} maxLength={3000} defaultValue={event?.description} required />
         <label className="mb-2 block text-sm" htmlFor="event-status">Status</label>
-        <select className={fieldClass} id="event-status" name="status" defaultValue={event?.status ?? 'draft'}>
+        <select className={fieldClass} id="event-status" name="status" defaultValue={event?.status ?? 'published'}>
           <option value="draft">Utkast</option>
           <option value="published">Publicerad</option>
         </select>
-        <p className="text-sm text-black/70">Tävlingar sparas i databasen. Välj utkast om tävlingen inte är redo att publiceras.</p>
         <div className="mt-4 flex flex-wrap gap-3">
           <button className="admin-button mt-0! w-auto!" type="submit">{saving ? 'Sparar…' : event ? 'Spara ändringar' : 'Skapa tävling'}</button>
           <button className="min-h-12 cursor-pointer rounded border border-black/40 px-5 py-2 font-heading hover:bg-black/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black" type="button" onClick={onCancel}>Avbryt</button>

@@ -1,11 +1,9 @@
-import { useState } from 'react'
+import { Link } from 'react-router'
 import { formatClubDate } from '../utils/date'
 import { getTournamentOccurrences } from '../utils/tournaments'
 import type { Tournament } from '../types/tournament'
-import TournamentDetails from './TournamentDetails'
 
 function TournamentTimeline({ events, date }: { events: Tournament[]; date?: string }) {
-  const [selectedEvent, setSelectedEvent] = useState<Tournament | null>(null)
   const occurrences = getTournamentOccurrences(events).filter(({ round }) => !date || round.date === date)
 
   if (occurrences.length === 0) return <p>Inga tävlingar att visa just nu.</p>
@@ -24,14 +22,13 @@ function TournamentTimeline({ events, date }: { events: Tournament[]; date?: str
               <h3 className="font-heading text-2xl leading-tight wrap-break-word">{event.title}</h3>
               {total > 1 && <p className="mt-1 font-heading text-lg">Rond {number} av {total}</p>}
               <p className="mt-2 text-sm">{round.time} · {round.venue}</p>
-              <button type="button" aria-haspopup="dialog" onClick={() => setSelectedEvent(event)} className="mt-3 inline-flex min-h-11 cursor-pointer items-center text-left text-sm underline underline-offset-4 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black">
+              <Link to={`/tavlingar/${encodeURIComponent(event.id)}`} className="mt-3 inline-flex min-h-11 items-center text-left text-sm underline underline-offset-4 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black">
                 Visa tävlingen<span className="sr-only"> {event.title}{total > 1 ? `, rond ${number}` : ''}</span><span aria-hidden="true" className="ml-2">→</span>
-              </button>
+              </Link>
             </div>
           </li>
         ))}
       </ol>
-      <TournamentDetails event={selectedEvent} onClose={() => setSelectedEvent(null)} />
     </>
   )
 }

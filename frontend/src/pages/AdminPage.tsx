@@ -27,7 +27,6 @@ function AdminPage() {
   const [notice, setNotice] = useState('')
   const path = pathname.replace(/\/+$/, '')
   const panelTitle = ({ '/admin': 'Ditt konto', '/admin/styrelsen': 'Styrelsen', '/admin/inbjudningar': 'Inbjudningar', '/admin/tavlingar': 'Tävlingar', '/admin/nyheter': 'Nyheter' } as Record<string, string>)[path] ?? 'Sidan finns inte'
-  const isLocalContent = path === '/admin/tavlingar' || path === '/admin/nyheter'
 
   const handleSessionExpired = useCallback(() => {
     setUser(null)
@@ -106,9 +105,6 @@ function AdminPage() {
             <p className="admin-eyebrow">Roslagens Bowlingklubb</p>
             <h2 id="session-heading">{session !== 'ready' ? 'Din session' : user ? panelTitle : 'Logga in'}</h2>
             {user && error && <p className="admin-error" role="alert">{error}</p>}
-            {user && isLocalContent && <p className="mb-6 border-l-3 border-red bg-warm-white p-4 text-sm">{path === '/admin/tavlingar'
-              ? 'Här kan du skapa och förhandsvisa tävlingar. Redigering av sparade tävlingar är ännu inte tillgänglig.'
-              : 'Nyheter använder tills vidare exempeldata. Ändringar sparas bara lokalt i den öppna vyn och försvinner när du lämnar den eller laddar om. Inget publiceras på webbplatsen.'}</p>}
 
             {session === 'checking' ? <p role="status">Kontrollerar din inloggning…</p> : session === 'error' ? (
               <>
@@ -121,7 +117,7 @@ function AdminPage() {
                 <Route path="styrelsen" element={<AdminBoard disabled={busy} onSessionExpired={handleSessionExpired} />} />
                 <Route path="inbjudningar" element={<AdminInvitations disabled={busy} onSessionExpired={handleSessionExpired} />} />
                 <Route path="tavlingar" element={<fieldset disabled={busy} className="min-w-0 border-0 p-0"><AdminTournaments onSessionExpired={handleSessionExpired} /></fieldset>} />
-                <Route path="nyheter" element={<fieldset disabled={busy} className="min-w-0 border-0 p-0"><AdminNews /></fieldset>} />
+                <Route path="nyheter" element={<fieldset disabled={busy} className="min-w-0 border-0 p-0"><AdminNews onSessionExpired={handleSessionExpired} /></fieldset>} />
                 <Route path="*" element={<Link className="underline underline-offset-4" to="/admin">Till ditt konto</Link>} />
               </Routes>
             ) : (

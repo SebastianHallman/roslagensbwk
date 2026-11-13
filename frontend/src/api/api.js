@@ -143,7 +143,7 @@ async function fetchAdminTournaments(signal) {
 
 async function fetchTournaments(signal) {
     try {
-        const response = await fetch(`${API_URL}/tournaments/published`);
+        const response = await fetch(`${API_URL}/tournaments/published`, { signal });
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -153,6 +153,88 @@ async function fetchTournaments(signal) {
         console.error('Error fetching board members:', error);
         throw error;
     }
+}
+
+async function fetchNews(signal) {
+    const response = await fetch(`${API_URL}/news/published`, { signal });
+    if (!response.ok) {
+        const error = new Error(`HTTP error! status: ${response.status}`);
+        error.status = response.status;
+        throw error;
+    }
+    return response.json();
+}
+
+async function fetchAdminNews(signal) {
+    const response = await fetch(`${API_URL}/news`, {
+        method: 'GET',
+        credentials: 'include',
+        signal
+    });
+    if (!response.ok) {
+        const error = new Error(`HTTP error! status: ${response.status}`);
+        error.status = response.status;
+        throw error;
+    }
+    return response.json();
+}
+
+async function createNews(news) {
+    const response = await fetch(`${API_URL}/news/create`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ news })
+    });
+    if (!response.ok) {
+        const details = await response.json().catch(() => null);
+        const message = details?.code === 'INVALID_NEWS' && typeof details.error === 'string'
+            ? details.error
+            : `HTTP error! status: ${response.status}`;
+        const error = new Error(message);
+        error.status = response.status;
+        error.code = details?.code;
+        throw error;
+    }
+    return response.json();
+}
+
+async function updateNews(id, news) {
+    const response = await fetch(`${API_URL}/news/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ news })
+    });
+    if (!response.ok) {
+        const details = await response.json().catch(() => null);
+        const message = details?.code === 'INVALID_NEWS' && typeof details.error === 'string'
+            ? details.error
+            : `HTTP error! status: ${response.status}`;
+        const error = new Error(message);
+        error.status = response.status;
+        error.code = details?.code;
+        throw error;
+    }
+    return response.json();
+}
+
+async function deleteNews(id) {
+    const response = await fetch(`${API_URL}/news/delete/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+    });
+    if (!response.ok) {
+        const details = await response.json().catch(() => null);
+        const message = details?.code === 'INVALID_NEWS' && typeof details.error === 'string'
+            ? details.error
+            : `HTTP error! status: ${response.status}`;
+        const error = new Error(message);
+        error.status = response.status;
+        error.code = details?.code;
+        throw error;
+    }
+    return response.json();
 }
 
 async function createTournament(tournament) {
@@ -222,4 +304,4 @@ const reorderBoardMembers = (ids) => boardRequest('/reorder', 'PUT', { ids });
 
 export { fetchBoardMembers, signIn, signOut, getCurrentUser, createAdminInvitation, redeemInvitation,
     fetchAdminBoardMembers, addBoardMember, updateBoardMember, deleteBoardMember, reorderBoardMembers,
-    createTournament, updateTournament, fetchAdminTournaments, fetchTournaments, deleteTournament };
+    createTournament, updateTournament, fetchAdminTournaments, fetchTournaments, deleteTournament, fetchNews, fetchAdminNews, createNews, updateNews, deleteNews };

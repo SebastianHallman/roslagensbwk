@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const express = require('express');
 const utils = require('../utils');
 const jsonBody = require('../jsonBody');
-const { validateTournament, validateTournamentUpdate } = require('../tournaments/validation');
+const { validateTournament, validateTournamentUpdate } = utils;
 
 function loadModule(file, dependencies) {
     const moduleMock = { exports: {} };

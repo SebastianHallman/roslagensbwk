@@ -3,8 +3,7 @@ const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const vm = require('node:vm');
-const validation = require('./validation');
-const { formatTournamentJSON } = require('../utils');
+const utils = require('../utils');
 
 function tournament() {
     return {
@@ -37,8 +36,7 @@ function database({ exists = true, existingIds = [21, 22], failAt } = {}) {
     };
     const moduleMock = { exports: {} };
     const dependencies = {
-        './tournaments/validation': validation,
-        './utils': { formatTournamentJSON },
+        './utils': utils,
         'mysql2/promise': { createPool: () => ({ getConnection: async () => { calls.push('connect'); return connection; } }) },
     };
     const file = join(__dirname, '..', 'db.js');

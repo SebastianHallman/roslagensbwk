@@ -12,18 +12,18 @@ function NewsPreview({ news, onClose }: { news: ClubNews | null; onClose: () => 
   }, [news])
 
   return (
-    <dialog ref={dialogRef} aria-labelledby={titleId} onClose={onClose} className="fixed inset-0 m-auto max-h-[calc(100svh_-_2rem)] w-[calc(100%_-_2rem)] max-w-2xl overflow-y-auto overscroll-contain rounded-lg border-0 border-t-4 border-red bg-black p-5 text-white shadow-xl backdrop:bg-black/75 min-[40rem]:p-8">
+    <dialog ref={dialogRef} aria-labelledby={titleId} onClose={onClose} className="fixed inset-0 m-auto max-h-[calc(100svh_-_2rem)] w-[calc(100%_-_2rem)] max-w-xl overflow-y-auto overscroll-contain border-0 bg-black p-0 text-white wrap-anywhere [color-scheme:light] backdrop:bg-black/90">
       {news && (
-        <article className="wrap-break-word">
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <p className="text-xs text-warm-white">Förhandsvisning · exempelnyhet</p>
-            <button type="button" onClick={() => dialogRef.current?.close()} className="min-h-11 shrink-0 cursor-pointer rounded border border-white/50 px-3 text-sm hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">Stäng</button>
-          </div>
-          <time dateTime={news.date} className="text-sm text-warm-white">{formatClubDate(news.date, { day: 'numeric', month: 'long', year: 'numeric' })}</time>
-          <h2 id={titleId} className="mt-3 text-3xl leading-tight">{news.title}</h2>
-          <p className="mt-5 whitespace-pre-wrap text-warm-white">{news.summary}</p>
-          <p className="mt-6 whitespace-pre-wrap text-sm text-warm-white">{news.body}</p>
-        </article>
+        <>
+          <button type="button" onClick={() => dialogRef.current?.close()} className="mt-4 mb-8 ml-4 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded border border-white/30 px-4 py-2 text-sm hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"><span aria-hidden="true">←</span> Stäng</button>
+          <article className="min-w-0 max-w-full bg-[#fff] px-6 py-8 text-black sm:p-10">
+          {news.date
+            ? <time dateTime={news.date} className="text-sm text-black/60">{formatClubDate(news.date, { day: 'numeric', month: 'long', year: 'numeric' })}</time>
+            : <p className="text-sm text-black/60">Datum sätts vid publicering.</p>}
+          <h2 id={titleId} className="mt-3 mb-8 text-4xl leading-tight md:text-5xl">{news.title}</h2>
+          <p className="max-w-prose whitespace-pre-wrap leading-relaxed text-black/85">{news.body}</p>
+          </article>
+        </>
       )}
     </dialog>
   )

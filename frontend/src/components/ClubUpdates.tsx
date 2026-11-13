@@ -2,6 +2,7 @@ import { fetchTournaments } from '../api/api'
 import { fromApiTournament } from '../api/tournaments'
 import type { ApiTournament, Tournament } from '../types/tournament'
 import TournamentCalendar from './TournamentCalendar'
+import ClubNewsSection from './ClubNewsSection'
 import { useState, useEffect } from 'react'
 
 function ClubUpdates() {
@@ -28,7 +29,7 @@ function ClubUpdates() {
             {error ? <p role="alert">{error}</p> : <TournamentCalendar events={tournaments} />}
           </div>
         </section>
-
+        <ClubNewsSection />
       </div>
     </div>
   )

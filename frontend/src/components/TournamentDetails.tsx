@@ -28,24 +28,21 @@ function TournamentDetails({ event, onClose }: TournamentDetailsProps) {
       ref={dialogRef}
       aria-labelledby={titleId}
       onClose={onClose}
-      className="fixed inset-0 m-auto max-h-[calc(100svh_-_2rem)] w-[calc(100%_-_2rem)] max-w-xl overflow-y-auto overscroll-contain rounded-lg border-0 border-t-4 border-red bg-warm-white p-5 text-black shadow-xl [color-scheme:light] backdrop:bg-black/75 min-[40rem]:p-8"
+      className="fixed inset-0 m-auto max-h-[calc(100svh_-_2rem)] w-[calc(100%_-_2rem)] max-w-xl overflow-y-auto overscroll-contain border-0 bg-black p-0 text-white wrap-anywhere [color-scheme:light] backdrop:bg-black/90"
     >
       {event && (
         <>
-          <div className="mb-6 flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <h2 id={titleId} className="text-3xl leading-tight wrap-break-word">{event.title}</h2>
-            </div>
-            <button type="button" onClick={close} className="min-h-11 shrink-0 cursor-pointer rounded border border-black/30 px-3 text-sm hover:bg-black/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black">Stäng</button>
-          </div>
-          <div className="mb-6 rounded-lg bg-white p-4 text-sm">
-            <h3 className="mb-3 font-heading text-xl">{rounds.length > 1 ? 'Ronder' : 'Speldatum'}</h3>
-            <ol className="grid list-none gap-3 p-0">
+          <button type="button" onClick={close} className="mt-4 mb-8 ml-4 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded border border-white/30 px-4 py-2 text-sm hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"><span aria-hidden="true">←</span> Stäng</button>
+          <article className="min-w-0 max-w-full bg-[#fff] px-6 py-8 text-black sm:p-10">
+            <h2 id={titleId} className="mb-8 text-4xl leading-tight md:text-5xl">{event.title}</h2>
+            <p className="mb-8 max-w-prose whitespace-pre-wrap leading-relaxed text-black/85">{event.description}</p>
+            <h3 className="mb-4 font-heading text-2xl">{rounds.length > 1 ? 'Ronder' : 'Speldatum'}</h3>
+            <ol className="grid list-none gap-5 p-0 text-sm">
               {rounds.map((round, index) => {
                 const resultsUrl = getTournamentResultsUrl(round)
                 return (
-                <li key={round.id} className="border-b border-black/10 pb-3 last:border-0 last:pb-0">
-                  {rounds.length > 1 && <p className="font-heading text-lg">Rond {index + 1}</p>}
+                <li key={round.id} className="border-b border-black/15 pb-5 last:border-0 last:pb-0">
+                  {rounds.length > 1 && <h4 className="mb-2 font-heading text-xl">Rond {index + 1}</h4>}
                   <p><time dateTime={round.date}>{formatClubDate(round.date, { day: 'numeric', month: 'long', year: 'numeric' })}</time> · {round.time}</p>
                   <p className="mt-1">{round.venue}</p>
                   {resultsUrl && <a href={resultsUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-11 items-center underline underline-offset-4 focus-visible:outline-black!">Visa resultat{rounds.length > 1 ? ` för rond ${index + 1}` : ''}<span aria-hidden="true" className="ml-2">↗</span><span className="sr-only"> (öppnas i ny flik)</span></a>}
@@ -53,8 +50,7 @@ function TournamentDetails({ event, onClose }: TournamentDetailsProps) {
                 )
               })}
             </ol>
-          </div>
-          <p className="text-sm">{event.description}</p>
+          </article>
         </>
       )}
     </dialog>
