@@ -7,6 +7,7 @@ const limiter = require('../auth/rateLimiter');
 const invitationLimiter = require('../auth/invitationLimiter');
 const { isValidEmail } = require('../auth/email');
 const { generateInvitationCode, hashInvitationCode } = require('../auth/invitations');
+const sendMail = require('../email/sendEmail');
 
 const router = express.Router();
 
@@ -80,7 +81,11 @@ router.post('/invite', requireAdmin, async (req, res) => {
             return res.status(409).json({ error: 'An account for this email already exists', code: 'ACCOUNT_EXISTS' });
         }
         const {code, hashedCode} = generateInvitationCode();
+        const url = new URL('/acceptera-inbjudan', process.env.FRONTEND_URL);
+        url.searchParams.set('token', code);
+        
         await createAdminInvitation(email.trim(), hashedCode);
+        await sendMail(email.trim(), 'bwk-admininbjudan', {INVITE_URL: url.toString()});
         res.status(201).json({ message: 'Invitation created or renewed', code });
     } catch (error) {
         console.error('Error creating invitation:', error);

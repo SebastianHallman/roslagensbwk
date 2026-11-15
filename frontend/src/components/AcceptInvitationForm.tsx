@@ -1,15 +1,18 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { redeemInvitation } from '../api/api.js'
 
 const inputClass = 'mt-2 mb-5 min-h-12 w-full rounded border border-black/45 bg-[#fff] px-4 py-3 text-base text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black'
 const linkClass = 'underline underline-offset-4 focus-visible:outline-black!'
 
 function AcceptInvitationForm() {
+  const [searchParams] = useSearchParams()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+
+  const invitationToken = searchParams.get('token') ?? ''
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -52,7 +55,7 @@ function AcceptInvitationForm() {
     <>
       <form onSubmit={handleSubmit} aria-label="Skapa administratörskonto" aria-busy={busy}>
         <label htmlFor="accept-token">Inbjudningskod</label>
-        <input className={inputClass} id="accept-token" name="token" required pattern=".*\S.*" autoComplete="off" autoCapitalize="none" spellCheck={false} readOnly={busy} />
+        <input className={inputClass} id="accept-token" name="token" defaultValue={invitationToken} required pattern=".*\S.*" autoComplete="off" autoCapitalize="none" spellCheck={false} readOnly />
         <label htmlFor="accept-email">E-postadress</label>
         <input className={inputClass} id="accept-email" name="email" type="email" maxLength={254} autoComplete="username" required readOnly={busy} />
         <label htmlFor="accept-password">Lösenord</label>

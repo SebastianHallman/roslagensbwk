@@ -16,6 +16,7 @@
     "express-mysql-session": "^3.0.3",
     "express-rate-limit": "^8.7.3",
     "express-session": "^1.19.0",
-    "mysql2": "^3.24.6"
+    "mysql2": "^3.24.6",
+    "resend": "^6.38.1"
   }
 }
