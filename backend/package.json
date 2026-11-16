@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "node --env-file=.env --watch index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "cleanup:auth": "node scripts/cleanup-auth.js"
   },
   "author": "",
   "license": "ISC",
