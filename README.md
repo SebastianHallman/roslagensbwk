@@ -140,3 +140,13 @@ To preview a frontend production build locally, run `npm run preview` from `fron
 - The production backend trusts one reverse proxy hop. Ensure the hosting network and forwarded headers match that configuration.
 
 Static club content lives in `frontend/src/data/` and the frontend components. Board members, news, tournaments, rounds, admin accounts, invitations, and sessions are stored in MySQL.
+
+### Scheduled auth cleanup
+
+From `backend/`, run `npm run cleanup:auth` with the backend's `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME` environment variables. For local development with `backend/.env`, use `node --env-file=.env scripts/cleanup-auth.js` instead.
+
+The command deletes expired admin invitations, password reset tokens, and sessions in one transaction. Active records and invitations without an expiry date are preserved. Successful invitation redemption and password resets already consume their tokens. Session storage also clears expired sessions automatically every 15 minutes while the API is running.
+
+Apply migrations through `009_password_reset_tokens.sql` before running the command. Schedule it hourly (`0 * * * *`) in the backend container with `npm run cleanup:auth`, using the directory containing the backend's `package.json` as the working directory and the same database environment as the API. If using host cron, run the command inside the backend container; container database hostnames may not resolve on the host.
+
+Each successful run logs only the number of deleted records per table. Failures roll back the transaction and exit with status `1`. Check the scheduler logs after configuration. Adding this command does not itself enable a scheduled job.
