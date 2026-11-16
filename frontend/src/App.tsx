@@ -4,6 +4,7 @@ import NewsPage from './pages/NewsPage'
 import TournamentPage from './pages/TournamentPage'
 import NotFoundPage from './pages/NotFoundPage'
 import AcceptInvitationPage from './pages/AcceptInvitationPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import AdminPage from './pages/AdminPage'
 import RouteFocus from './components/RouteFocus'
 
@@ -17,6 +18,7 @@ function App() {
         <Route path="/tavlingar/:id" element={<TournamentPage />} />
         <Route path="/admin/*" element={<AdminPage />} />
         <Route path="/acceptera-inbjudan" element={<AcceptInvitationPage />} />
+        <Route path="/aterstall-losenord" element={<ResetPasswordPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>

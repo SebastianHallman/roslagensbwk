@@ -6,6 +6,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import type { DragEndEvent } from '@dnd-kit/core'
 import { arrayMove, SortableContext, rectSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { fetchAdminBoardMembers, addBoardMember, updateBoardMember, deleteBoardMember, reorderBoardMembers } from '../api/api.js'
+import { getApiErrorDetails } from '../api/errors'
 
 type Props = { disabled: boolean; onSessionExpired: () => void }
 function AdminBoard({ disabled, onSessionExpired }: Props) {
@@ -35,7 +36,8 @@ function AdminBoard({ disabled, onSessionExpired }: Props) {
       }
     }).catch((failure) => {
       if (controller.signal.aborted) return
-      if (failure.status === 401 || failure.status === 403) onSessionExpired()
+      const { status } = getApiErrorDetails(failure)
+      if (status === 401 || status === 403) onSessionExpired()
       else setLoadError(true)
     }).finally(() => {
       if (!controller.signal.aborted) setLoading(false)
@@ -58,7 +60,7 @@ function AdminBoard({ disabled, onSessionExpired }: Props) {
   }
 
   function showError(failure: unknown) {
-    const status = failure instanceof Error && 'status' in failure ? failure.status : undefined
+    const { status } = getApiErrorDetails(failure)
     if (status === 401 || status === 403) { onSessionExpired(); return }
     setError(status === 409 || status === 404
       ? 'Styrelsen har ändrats. Hämta styrelsen igen innan du fortsätter.'

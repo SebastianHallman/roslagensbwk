@@ -5,9 +5,10 @@ type Props = {
   error: string
   notice: string
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>
+  onForgotPassword: () => void
 }
 
-function AdminSignInForm({ busy, error, notice, onSubmit }: Props) {
+function AdminSignInForm({ busy, error, notice, onSubmit, onForgotPassword }: Props) {
   return (
     <>
       <p className="admin-muted">Logga in med ditt administratörskonto.</p>
@@ -20,6 +21,7 @@ function AdminSignInForm({ busy, error, notice, onSubmit }: Props) {
         {error && <p className="admin-error" role="alert">{error}</p>}
         <button className="admin-button" type="submit" disabled={busy}>{busy ? 'Loggar in…' : 'Logga in'}</button>
       </form>
+      <button type="button" className="text-red mt-4 cursor-pointer hover:underline disabled:cursor-wait disabled:opacity-60" onClick={onForgotPassword} disabled={busy}>Glömt lösenord?</button>
       <p className="admin-help">Behöver du tillgång? Kontakta en administratör i klubben.</p>
     </>
   )

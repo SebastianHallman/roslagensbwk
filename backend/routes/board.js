@@ -42,7 +42,7 @@ router.post('/add', requireAdmin, async (req, res) => {
 router.put('/reorder', requireAdmin, async (req, res) => {
     const { ids } = req.body ?? {};
     if (!Array.isArray(ids) ||
-        !ids.every((id) => Number.isInteger(id) && id > 0 && id <= 4294967295) ||
+        !ids.every((id) => Number.isInteger(id) && validId(id)) ||
         new Set(ids).size !== ids.length) {
         return res.status(400).json({ error: 'Invalid board member IDs' });
     }
