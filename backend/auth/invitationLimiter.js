@@ -1,12 +1,9 @@
-const { rateLimit } = require('express-rate-limit');
+const createAuthLimiter = require('./createAuthLimiter');
 
-const invitationLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
+const invitationLimiter = createAuthLimiter({
     limit: 10,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many account creation attempts. Try again later.'},
-})
+    message: 'Too many account creation attempts. Try again later.',
+});
 
 module.exports = invitationLimiter;
 

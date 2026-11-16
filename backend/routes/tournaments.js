@@ -1,4 +1,4 @@
-const {validId} = require('../utils');
+const { validId } = require('../utils');
 const express = require('express');
 const { getTournaments, createTournament, updateTournament, deleteTournament } = require('../db');
 const requireAdmin = require('../auth/requireAdmin');
@@ -31,7 +31,7 @@ router.post('/create', requireAdmin, async (req, res) => {
 
 router.put('/:id', requireAdmin, async (req, res) => {
     const id = Number(req.params.id);
-    if (!/^[1-9]\d*$/.test(req.params.id) || !Number.isInteger(id) || id > 4294967295) {
+    if (!validId(req.params.id)) {
         return res.status(400).json({
             error: 'Tournament ID must be a positive integer within the UNSIGNED INT range.',
             code: 'INVALID_TOURNAMENT',

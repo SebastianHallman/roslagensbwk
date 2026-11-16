@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createNews, deleteNews, fetchAdminNews, updateNews } from '../api/api.js'
+import { getApiErrorDetails } from '../api/errors'
 import type { ApiNews } from '../types/news'
 import { formatClubDate } from '../utils/date'
 import NewsEditor, { type EditableNews } from './NewsEditor'
@@ -36,7 +37,7 @@ function AdminNews({ onSessionExpired }: Props) {
       setLoadState('ready')
     }).catch((failure: unknown) => {
       if (controller.signal.aborted) return
-      const status = failure instanceof Error && 'status' in failure ? failure.status : undefined
+      const { status } = getApiErrorDetails(failure)
       if (status === 401 || status === 403) {
         onSessionExpired()
         return
@@ -73,12 +74,11 @@ function AdminNews({ onSessionExpired }: Props) {
       closeEditor()
       setReload((current) => current + 1)
     } catch (failure: unknown) {
-      const status = failure instanceof Error && 'status' in failure ? failure.status : undefined
+      const { status, code } = getApiErrorDetails(failure)
       if (status === 401 || status === 403) {
         onSessionExpired()
         return
       }
-      const code = failure instanceof Error && 'code' in failure ? failure.code : undefined
       setError(code === 'INVALID_NEWS' && failure instanceof Error
         ? failure.message
         : 'Kunde inte spara nyheten. Försök igen.')
@@ -109,7 +109,7 @@ function AdminNews({ onSessionExpired }: Props) {
       setNotice(`${item.title} har tagits bort.`)
       setReload((current) => current + 1)
     } catch (failure: unknown) {
-      const status = failure instanceof Error && 'status' in failure ? failure.status : undefined
+      const { status } = getApiErrorDetails(failure)
       if (status === 401 || status === 403) {
         onSessionExpired()
         return

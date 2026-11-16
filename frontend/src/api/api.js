@@ -1,4 +1,4 @@
-
+import { requestJson } from './requestJson.js';
 const API_URL = import.meta.env.VITE_API_URL;
 
 if (!API_URL) {
@@ -8,12 +8,7 @@ if (!API_URL) {
 
 async function fetchBoardMembers() {
     try {
-        const response = await fetch(`${API_URL}/board`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        return data;
+        return await requestJson(`${API_URL}/board`);
     } catch (error) {
         console.error('Error fetching board members:', error);
         throw error;
@@ -22,21 +17,11 @@ async function fetchBoardMembers() {
 
 async function signIn(email, password) {
     try {
-        const response = await fetch(`${API_URL}/auth/signin`, {
+        return await requestJson(`${API_URL}/auth/signin`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password }),
+            data: { email, password },
             credentials: 'include'
         });
-        if (!response.ok) {
-            const error = new Error(`HTTP error! status: ${response.status}`);
-            error.status = response.status;
-            throw error;
-        }
-        const data = await response.json();
-        return data;
     } catch (error) {
         console.error('Error signing in:', error);
         throw error;
@@ -45,15 +30,10 @@ async function signIn(email, password) {
 
 async function signOut() {
     try {
-        const response = await fetch(`${API_URL}/auth/signout`, {
+        return await requestJson(`${API_URL}/auth/signout`, {
             method: 'POST',
             credentials: 'include'
         });
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        return data;
     } catch (error) {
         console.error('Error signing out:', error);
         throw error;
@@ -62,238 +42,135 @@ async function signOut() {
 
 async function getCurrentUser() {
     try {
-        const response = await fetch(`${API_URL}/auth/me`, {
+        const data = await requestJson(`${API_URL}/auth/me`, {
             method: 'GET',
             credentials: 'include'
         });
-        if (response.status === 401) return null;
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
         return data.user;
     } catch (error) {
+        if (error.status === 401) return null;
         console.error('Error getting user:', error);
         throw error;
     }
 }
 async function createAdminInvitation(email) {
-    const response = await fetch(`${API_URL}/auth/invite`, {
+    return requestJson(`${API_URL}/auth/invite`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        data: { email }
     });
-    if (!response.ok) {
-        const details = await response.json().catch(() => null);
-        const error = new Error(`HTTP error! status: ${response.status}`);
-        error.status = response.status;
-        error.code = details?.code;
-        throw error;
-    }
-    return response.json();
 }
 
-async function redeemInvitation(token, email, password) {
-    const response = await fetch(`${API_URL}/auth/verify-invite`, {
+async function requestPasswordReset(email) {
+    return requestJson(`${API_URL}/auth/forgot-password`, {
+        method: 'POST',
+        data: { email }
+    });
+}
+
+async function redeemInvitation(token, password) {
+    return requestJson(`${API_URL}/auth/verify-invite`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, email, password })
+        data: { token, password }
     });
-    if (!response.ok) {
-        const error = new Error(`HTTP error! status: ${response.status}`);
-        error.status = response.status;
-        throw error;
-    }
-    return response.json();
+}
+
+async function resetPassword(token, password) {
+    return requestJson(`${API_URL}/auth/reset-password`, {
+        method: 'POST',
+        data: { token, password }
+    });
 }
 
 async function boardRequest(path, method = 'GET', data, signal) {
-    const response = await fetch(`${API_URL}/board${path}`, {
+    return requestJson(`${API_URL}/board${path}`, {
         method,
         credentials: 'include',
         signal,
-        ...(data === undefined ? {} : {
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        })
+        data
     });
-    if (!response.ok) {
-        const error = new Error(`HTTP error! status: ${response.status}`);
-        error.status = response.status;
-        throw error;
-    }
-    return response.json();
 }
 
 async function fetchAdminTournaments(signal) {
-    const response = await fetch(`${API_URL}/tournaments`, {
+    return requestJson(`${API_URL}/tournaments`, {
         method: 'GET',
         credentials: 'include',
         signal
     });
-    if (!response.ok) {
-        const error = new Error(`HTTP error! status: ${response.status}`);
-        error.status = response.status;
-        throw error;
-    }
-    return response.json();
 }
 
 async function fetchTournaments(signal) {
     try {
-        const response = await fetch(`${API_URL}/tournaments/published`, { signal });
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        return data;
+        return await requestJson(`${API_URL}/tournaments/published`, { signal });
     } catch (error) {
-        console.error('Error fetching board members:', error);
+        console.error('Error fetching tournaments:', error);
         throw error;
     }
 }
 
 async function fetchNews(signal) {
-    const response = await fetch(`${API_URL}/news/published`, { signal });
-    if (!response.ok) {
-        const error = new Error(`HTTP error! status: ${response.status}`);
-        error.status = response.status;
-        throw error;
-    }
-    return response.json();
+    return requestJson(`${API_URL}/news/published`, { signal });
 }
 
 async function fetchAdminNews(signal) {
-    const response = await fetch(`${API_URL}/news`, {
+    return requestJson(`${API_URL}/news`, {
         method: 'GET',
         credentials: 'include',
         signal
     });
-    if (!response.ok) {
-        const error = new Error(`HTTP error! status: ${response.status}`);
-        error.status = response.status;
-        throw error;
-    }
-    return response.json();
 }
 
 async function createNews(news) {
-    const response = await fetch(`${API_URL}/news/create`, {
+    return requestJson(`${API_URL}/news/create`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ news })
+        data: { news },
+        validationCode: 'INVALID_NEWS'
     });
-    if (!response.ok) {
-        const details = await response.json().catch(() => null);
-        const message = details?.code === 'INVALID_NEWS' && typeof details.error === 'string'
-            ? details.error
-            : `HTTP error! status: ${response.status}`;
-        const error = new Error(message);
-        error.status = response.status;
-        error.code = details?.code;
-        throw error;
-    }
-    return response.json();
 }
 
 async function updateNews(id, news) {
-    const response = await fetch(`${API_URL}/news/${encodeURIComponent(id)}`, {
+    return requestJson(`${API_URL}/news/${encodeURIComponent(id)}`, {
         method: 'PUT',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ news })
+        data: { news },
+        validationCode: 'INVALID_NEWS'
     });
-    if (!response.ok) {
-        const details = await response.json().catch(() => null);
-        const message = details?.code === 'INVALID_NEWS' && typeof details.error === 'string'
-            ? details.error
-            : `HTTP error! status: ${response.status}`;
-        const error = new Error(message);
-        error.status = response.status;
-        error.code = details?.code;
-        throw error;
-    }
-    return response.json();
 }
 
 async function deleteNews(id) {
-    const response = await fetch(`${API_URL}/news/delete/${encodeURIComponent(id)}`, {
+    return requestJson(`${API_URL}/news/delete/${encodeURIComponent(id)}`, {
         method: 'DELETE',
         credentials: 'include',
+        validationCode: 'INVALID_NEWS'
     });
-    if (!response.ok) {
-        const details = await response.json().catch(() => null);
-        const message = details?.code === 'INVALID_NEWS' && typeof details.error === 'string'
-            ? details.error
-            : `HTTP error! status: ${response.status}`;
-        const error = new Error(message);
-        error.status = response.status;
-        error.code = details?.code;
-        throw error;
-    }
-    return response.json();
 }
 
 async function createTournament(tournament) {
-    const response = await fetch(`${API_URL}/tournaments/create`, {
+    return requestJson(`${API_URL}/tournaments/create`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tournament })
+        data: { tournament },
+        validationCode: 'INVALID_TOURNAMENT'
     });
-    if (!response.ok) {
-        const details = await response.json().catch(() => null);
-        const message = details?.code === 'INVALID_TOURNAMENT' && typeof details.error === 'string'
-            ? details.error
-            : `HTTP error! status: ${response.status}`;
-        const error = new Error(message);
-        error.status = response.status;
-        error.code = details?.code;
-        throw error;
-    }
-    return response.json();
 }
 
 async function updateTournament(id, tournament) {
-    const response = await fetch(`${API_URL}/tournaments/${encodeURIComponent(id)}`, {
+    return requestJson(`${API_URL}/tournaments/${encodeURIComponent(id)}`, {
         method: 'PUT',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tournament })
+        data: { tournament },
+        validationCode: 'INVALID_TOURNAMENT'
     });
-    if (!response.ok) {
-        const details = await response.json().catch(() => null);
-        const message = details?.code === 'INVALID_TOURNAMENT' && typeof details.error === 'string'
-            ? details.error
-            : `HTTP error! status: ${response.status}`;
-        const error = new Error(message);
-        error.status = response.status;
-        error.code = details?.code;
-        throw error;
-    }
-    return response.json();
 }
 
 async function deleteTournament(id) {
-    const response = await fetch(`${API_URL}/tournaments/delete/${encodeURIComponent(id)}`, {
+    return requestJson(`${API_URL}/tournaments/delete/${encodeURIComponent(id)}`, {
         method: 'DELETE',
         credentials: 'include',
+        validationCode: 'INVALID_TOURNAMENT'
     });
-    if (!response.ok) {
-        const details = await response.json().catch(() => null);
-        const message = details?.code === 'INVALID_TOURNAMENT' && typeof details.error === 'string'
-            ? details.error
-            : `HTTP error! status: ${response.status}`;
-        const error = new Error(message);
-        error.status = response.status;
-        error.code = details?.code;
-        throw error;
-    }
-    return response.json();
-    
 }
 
 const fetchAdminBoardMembers = (signal) => boardRequest('/admin', 'GET', undefined, signal);
@@ -302,6 +179,6 @@ const updateBoardMember = (id, member) => boardRequest(`/${id}`, 'PUT', member);
 const deleteBoardMember = (id) => boardRequest(`/delete/${id}`, 'DELETE');
 const reorderBoardMembers = (ids) => boardRequest('/reorder', 'PUT', { ids });
 
-export { fetchBoardMembers, signIn, signOut, getCurrentUser, createAdminInvitation, redeemInvitation,
+export { fetchBoardMembers, signIn, signOut, getCurrentUser, createAdminInvitation, redeemInvitation, requestPasswordReset, resetPassword,
     fetchAdminBoardMembers, addBoardMember, updateBoardMember, deleteBoardMember, reorderBoardMembers,
     createTournament, updateTournament, fetchAdminTournaments, fetchTournaments, deleteTournament, fetchNews, fetchAdminNews, createNews, updateNews, deleteNews };

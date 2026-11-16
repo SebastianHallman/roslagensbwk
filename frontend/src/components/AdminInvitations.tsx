@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { createAdminInvitation } from '../api/api.js'
+import { getApiErrorDetails } from '../api/errors'
 
 type Props = {
   disabled: boolean
@@ -25,8 +26,7 @@ function AdminInvitations({ disabled, onSessionExpired }: Props) {
       setInvitation({ email })
       form.reset()
     } catch (failure) {
-      const status = failure instanceof Error && 'status' in failure ? failure.status : undefined
-      const code = failure instanceof Error && 'code' in failure ? failure.code : undefined
+      const { status, code } = getApiErrorDetails(failure)
       if (status === 401 || status === 403) {
         onSessionExpired()
         return

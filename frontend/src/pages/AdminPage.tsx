@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { getCurrentUser, signIn, signOut } from '../api/api.js'
+import { getApiErrorDetails } from '../api/errors'
 import AdminHeader from '../components/AdminHeader'
 import AdminStory from '../components/AdminStory'
 import AdminAccount from '../components/AdminAccount'
 import AdminSignInForm from '../components/AdminSignInForm'
+import AdminForgotPasswordForm from '../components/AdminForgotPasswordForm'
 import AdminSidebar from '../components/AdminSidebar'
 import AdminBoard from '../components/AdminBoard'
 import AdminInvitations from '../components/AdminInvitations'
@@ -25,8 +27,22 @@ function AdminPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const authViewChanged = useRef(false)
   const path = pathname.replace(/\/+$/, '')
   const panelTitle = ({ '/admin': 'Ditt konto', '/admin/styrelsen': 'Styrelsen', '/admin/inbjudningar': 'Inbjudningar', '/admin/tavlingar': 'Tävlingar', '/admin/nyheter': 'Nyheter' } as Record<string, string>)[path] ?? 'Sidan finns inte'
+
+  useEffect(() => {
+    if (authViewChanged.current) headingRef.current?.focus()
+  }, [showForgotPassword])
+
+  function changeAuthView(forgotPassword: boolean) {
+    setError('')
+    setNotice('')
+    authViewChanged.current = true
+    setShowForgotPassword(forgotPassword)
+  }
 
   const handleSessionExpired = useCallback(() => {
     setUser(null)
@@ -65,7 +81,7 @@ function AdminPage() {
       form.reset()
       setUser(data.user)
     } catch (failure) {
-      const status = failure instanceof Error && 'status' in failure ? failure.status : undefined
+      const { status } = getApiErrorDetails(failure)
       setError(status === 401
         ? 'Fel e-postadress eller lösenord.'
         : status === 429
@@ -103,7 +119,7 @@ function AdminPage() {
         <section className="admin-panel" aria-labelledby="session-heading" aria-busy={busy || session === 'checking'}>
           <div className="admin-panel-inner">
             <p className="admin-eyebrow">Roslagens Bowlingklubb</p>
-            <h2 id="session-heading">{session !== 'ready' ? 'Din session' : user ? panelTitle : 'Logga in'}</h2>
+            <h2 id="session-heading" ref={headingRef} tabIndex={-1}>{session !== 'ready' ? 'Din session' : user ? panelTitle : showForgotPassword ? 'Glömt lösenord' : 'Logga in'}</h2>
             {user && error && <p className="admin-error" role="alert">{error}</p>}
 
             {session === 'checking' ? <p role="status">Kontrollerar din inloggning…</p> : session === 'error' ? (
@@ -120,8 +136,10 @@ function AdminPage() {
                 <Route path="nyheter" element={<fieldset disabled={busy} className="min-w-0 border-0 p-0"><AdminNews onSessionExpired={handleSessionExpired} /></fieldset>} />
                 <Route path="*" element={<Link className="underline underline-offset-4" to="/admin">Till ditt konto</Link>} />
               </Routes>
+            ) : showForgotPassword ? (
+              <AdminForgotPasswordForm onBack={() => changeAuthView(false)} />
             ) : (
-              <AdminSignInForm busy={busy} error={error} notice={notice} onSubmit={handleSignIn} />
+              <AdminSignInForm busy={busy} error={error} notice={notice} onSubmit={handleSignIn} onForgotPassword={() => changeAuthView(true)} />
             )}
           </div>
         </section>

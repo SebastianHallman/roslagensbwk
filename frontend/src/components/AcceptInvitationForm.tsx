@@ -2,8 +2,9 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { redeemInvitation } from '../api/api.js'
+import { getApiErrorDetails } from '../api/errors'
+import NewPasswordFields from './NewPasswordFields'
 
-const inputClass = 'mt-2 mb-5 min-h-12 w-full rounded border border-black/45 bg-[#fff] px-4 py-3 text-base text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black'
 const linkClass = 'underline underline-offset-4 focus-visible:outline-black!'
 
 function AcceptInvitationForm() {
@@ -17,6 +18,10 @@ function AcceptInvitationForm() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (busy) return
+    if (!invitationToken.trim()) {
+      setError('Inbjudningslänken saknar en kod. Öppna länken i ditt inbjudningsmejl eller be om en ny inbjudan.')
+      return
+    }
     const form = event.currentTarget
     const fields = new FormData(form)
     const password = String(fields.get('password'))
@@ -27,19 +32,28 @@ function AcceptInvitationForm() {
     setBusy(true)
     setError('')
     try {
-      await redeemInvitation(String(fields.get('token')).trim(), String(fields.get('email')).trim(), password)
+      await redeemInvitation(invitationToken, password)
       form.reset()
       setSuccess(true)
     } catch (failure) {
-      const status = failure instanceof Error && 'status' in failure ? failure.status : undefined
+      const { status } = getApiErrorDetails(failure)
       setError(status === 400
-        ? 'Inbjudan är ogiltig eller har gått ut. Kontrollera koden och e-postadressen, eller be om en ny inbjudan.'
+        ? 'Inbjudan är ogiltig eller har gått ut. Öppna länken i ditt senaste inbjudningsmejl eller be om en ny inbjudan.'
         : status === 409
           ? 'Det finns redan ett konto med den här e-postadressen. Prova att logga in.'
           : 'Det gick inte att bekräfta att kontot skapades. Prova att logga in innan du försöker igen.')
     } finally {
       setBusy(false)
     }
+  }
+
+  if (!invitationToken.trim()) {
+    return (
+      <div>
+        <p role="alert" className="mb-6 border-l-4 border-red bg-[#fce8e7] p-4 text-[#840904]">Du behöver en inbjudningslänk för att skapa ett administratörskonto. Öppna länken i ditt inbjudningsmejl eller be en administratör om en inbjudan.</p>
+        <Link className={linkClass} to="/admin">Till inloggningen</Link>
+      </div>
+    )
   }
 
   if (success) {
@@ -54,15 +68,7 @@ function AcceptInvitationForm() {
   return (
     <>
       <form onSubmit={handleSubmit} aria-label="Skapa administratörskonto" aria-busy={busy}>
-        <label htmlFor="accept-token">Inbjudningskod</label>
-        <input className={inputClass} id="accept-token" name="token" defaultValue={invitationToken} required pattern=".*\S.*" autoComplete="off" autoCapitalize="none" spellCheck={false} readOnly />
-        <label htmlFor="accept-email">E-postadress</label>
-        <input className={inputClass} id="accept-email" name="email" type="email" maxLength={254} autoComplete="username" required readOnly={busy} />
-        <label htmlFor="accept-password">Lösenord</label>
-        <input className={inputClass} id="accept-password" name="password" type="password" minLength={8} autoComplete="new-password" required readOnly={busy} aria-describedby="password-help" />
-        <p id="password-help" className="-mt-3 mb-5 text-sm text-black/70">Minst 8 tecken. Välj ett unikt lösenord.</p>
-        <label htmlFor="accept-confirm">Bekräfta lösenord</label>
-        <input className={inputClass} id="accept-confirm" name="confirmPassword" type="password" minLength={8} autoComplete="new-password" required readOnly={busy} />
+        <NewPasswordFields busy={busy} idPrefix="accept" />
         {error && <p role="alert" className="mb-5 border-l-4 border-red bg-[#fce8e7] p-4 text-sm text-[#840904]">{error}</p>}
         <button type="submit" disabled={busy} className="min-h-12 w-full cursor-pointer rounded bg-red px-5 py-3 font-heading text-xl text-white hover:enabled:bg-red/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-wait disabled:opacity-60">{busy ? 'Skapar konto…' : 'Skapa konto'}</button>
       </form>

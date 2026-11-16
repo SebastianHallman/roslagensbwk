@@ -1,12 +1,13 @@
 const express = require('express');
 const { authenticateAdmin} = require('../auth/authentication');
 const requireAdmin = require('../auth/requireAdmin');
-const { createAdminInvitation, redeemAdminInvitation, getUserByEmail } = require('../db');
+const { createAdminInvitation, redeemAdminInvitation, getUserByEmail, savePasswordResetToken, redeemPasswordResetToken } = require('../db');
 const { hashPassword } = require('../auth/passwords');
 const limiter = require('../auth/rateLimiter');
 const invitationLimiter = require('../auth/invitationLimiter');
+const passwordResetLimiter = require('../auth/passwordResetLimiter');
+const { generateTokenCode, hashTokenCode } = require('../auth/tokens');
 const { isValidEmail } = require('../auth/email');
-const { generateInvitationCode, hashInvitationCode } = require('../auth/invitations');
 const sendMail = require('../email/sendEmail');
 
 const router = express.Router();
@@ -80,7 +81,7 @@ router.post('/invite', requireAdmin, async (req, res) => {
         if (existingUser) {
             return res.status(409).json({ error: 'An account for this email already exists', code: 'ACCOUNT_EXISTS' });
         }
-        const {code, hashedCode} = generateInvitationCode();
+        const { code, hashedCode } = generateTokenCode();
         const url = new URL('/acceptera-inbjudan', process.env.FRONTEND_URL);
         url.searchParams.set('token', code);
         
@@ -93,14 +94,62 @@ router.post('/invite', requireAdmin, async (req, res) => {
     }
 });
 
+router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
+    const { email } = req.body ?? {};
+
+    if (!isValidEmail(email)) {
+        return res.status(400).json({ error: 'Valid email is required' });
+    }
+
+    try {
+        const user = await getUserByEmail(email.trim());
+
+        if (user) {
+            const { code, hashedCode } = generateTokenCode();
+            const url = new URL('/aterstall-losenord', process.env.FRONTEND_URL);
+            url.searchParams.set('token', code);
+
+            await savePasswordResetToken(user.id, hashedCode);
+            await sendMail(user.email, 'bwk-password-reset', {
+                RESET_PASSWORD_URL: url.toString(),
+            });
+        }
+    } catch {
+        console.error('Password reset request failed.');
+    }
+
+    return res.status(200).json({
+        message: 'Om ett konto finns för adressen skickar vi en återställningslänk.',
+    });
+});
+
+router.post('/reset-password', passwordResetLimiter, async (req, res) => {
+    const { token, password } = req.body ?? {};
+    if (typeof token !== 'string' || !/^[a-f0-9]{32}$/.test(token)) {
+        return res.status(400).json({ error: 'Invalid or expired reset link', code: 'INVALID_RESET_TOKEN' });
+    }
+    if (typeof password !== 'string' || password.length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters long', code: 'INVALID_PASSWORD' });
+    }
+
+    try {
+        const passwordHash = await hashPassword(password);
+        const changed = await redeemPasswordResetToken(hashTokenCode(token), passwordHash);
+        if (!changed) {
+            return res.status(400).json({ error: 'Invalid or expired reset link', code: 'INVALID_RESET_TOKEN' });
+        }
+        return res.status(200).json({ message: 'Password updated. Sign in with your new password.' });
+    } catch {
+        console.error('Password reset failed.');
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 router.post('/verify-invite', invitationLimiter, async (req, res) => {
-    const { token, email, password } = req.body ?? {};
+    const { token, password } = req.body ?? {};
 
     if (typeof token !== 'string' || !token.trim()) {
         return res.status(400).json({ error: 'Token is required' });
-    }
-    if (!isValidEmail(email)) {
-        return res.status(400).json({ error: 'Valid email is required' });
     }
     if (typeof password !== 'string' || !password) {
         return res.status(400).json({ error: 'Password is required' });
@@ -115,8 +164,8 @@ router.post('/verify-invite', invitationLimiter, async (req, res) => {
         
 
         const passwordHash = await hashPassword(password);
-        const tokenHash = hashInvitationCode(token);
-        const redemption = await redeemAdminInvitation(email.trim(), tokenHash, passwordHash);
+        const tokenHash = hashTokenCode(token);
+        const redemption = await redeemAdminInvitation(tokenHash, passwordHash);
 
         if (!redemption) {
             res.status(400).json({ error: 'Invalid or expired invite'});

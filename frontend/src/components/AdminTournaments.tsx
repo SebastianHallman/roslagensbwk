@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createTournament, deleteTournament, fetchAdminTournaments, updateTournament } from '../api/api.js'
+import { getApiErrorDetails } from '../api/errors'
 import { formatClubDate } from '../utils/date'
 import { fromApiTournament, toTournamentPayload } from '../api/tournaments'
 import type { ApiTournament, EditableTournament } from '../types/tournament'
@@ -48,7 +49,7 @@ function AdminTournaments({ onSessionExpired }: Props) {
       setLoadState('ready')
     }).catch((failure: unknown) => {
       if (controller.signal.aborted) return
-      const status = failure instanceof Error && 'status' in failure ? failure.status : undefined
+      const { status } = getApiErrorDetails(failure)
       if (status === 401 || status === 403) {
         onSessionExpired()
         return
@@ -102,7 +103,7 @@ function AdminTournaments({ onSessionExpired }: Props) {
       setPreview(null)
       setReload((current) => current + 1)
     } catch (failure) {
-      const status = failure instanceof Error && 'status' in failure ? failure.status : undefined
+      const { status } = getApiErrorDetails(failure)
       if (status === 401 || status === 403) {
         onSessionExpired()
         return
@@ -132,7 +133,7 @@ function AdminTournaments({ onSessionExpired }: Props) {
       setLoadState('loading')
       setReload((current) => current + 1)
     } catch (failure) {
-      const status = failure instanceof Error && 'status' in failure ? failure.status : undefined
+      const { status } = getApiErrorDetails(failure)
       if (status === 401 || status === 403) {
         onSessionExpired()
         return

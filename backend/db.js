@@ -135,13 +135,13 @@ async function getUserById(id) {
     return rows[0] ?? null;
 }
 
-async function redeemAdminInvitation(email, tokenHash, passwordHash) {
+async function redeemAdminInvitation(tokenHash, passwordHash) {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
 
         const [validInvite] = await connection.execute(
-            'SELECT * FROM admin_email_whitelist WHERE email = ? AND invitation_token_hash = ? AND invitation_expires_at > UTC_TIMESTAMP() FOR UPDATE', [email, tokenHash]
+            'SELECT * FROM admin_email_whitelist WHERE invitation_token_hash = ? AND invitation_expires_at > UTC_TIMESTAMP() FOR UPDATE', [tokenHash]
         );
 
         if (validInvite.length === 0) {
@@ -158,12 +158,55 @@ async function redeemAdminInvitation(email, tokenHash, passwordHash) {
 
         const user = await connection.execute(
             'INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)',
-            [email, passwordHash, "admin"]
+            [validInvite[0].email, passwordHash, "admin"]
         )
 
         await connection.commit();
         return user[0].insertId ?? null;
         
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
+}
+
+async function savePasswordResetToken(userId, tokenHash) {
+    await pool.execute(
+        `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+        VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 MINUTE))
+        ON DUPLICATE KEY UPDATE
+            token_hash = ?,
+            expires_at = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 MINUTE)`,
+        [userId, tokenHash, tokenHash]
+    );
+}
+
+async function redeemPasswordResetToken(tokenHash, passwordHash) {
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const [tokens] = await connection.execute(
+            `SELECT user_id FROM password_reset_tokens
+            WHERE token_hash = ? AND expires_at > UTC_TIMESTAMP() FOR UPDATE`,
+            [tokenHash]
+        );
+        if (tokens.length === 0) {
+            await connection.rollback();
+            return false;
+        }
+
+        const userId = tokens[0].user_id;
+        await connection.execute('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, userId]);
+        await connection.execute(
+            `DELETE FROM sessions WHERE
+            CASE WHEN JSON_VALID(data) THEN JSON_UNQUOTE(JSON_EXTRACT(data, '$.userId')) ELSE NULL END = ?`,
+            [String(userId)]
+        );
+        await connection.execute('DELETE FROM password_reset_tokens WHERE user_id = ?', [userId]);
+        await connection.commit();
+        return true;
     } catch (error) {
         await connection.rollback();
         throw error;
@@ -373,6 +416,8 @@ module.exports = {
     addBoardMember,
     deleteBoardMember,
     redeemAdminInvitation,
+    savePasswordResetToken,
+    redeemPasswordResetToken,
     createTournament,
     updateTournament,
     getTournaments,
