@@ -143,7 +143,7 @@ function ContactSection() {
         <div className="mt-10 grid gap-12 md:grid-cols-2 md:gap-16">
           <div>
             <h3 id="message-heading" className="mb-6 font-heading text-2xl">Skicka ett meddelande</h3>
-            <form className="grid gap-5" aria-labelledby="message-heading" aria-describedby="form-notice" aria-busy={isSending} onSubmit={handleSubmit}>
+            <form className="grid gap-5" aria-labelledby="message-heading" aria-busy={isSending} onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="contact-name">Namn</label>
                 <input id="contact-name" name="name" autoComplete="name" placeholder="Ditt namn" required maxLength={100} readOnly={isSending} className={fieldClassName} />
@@ -156,7 +156,6 @@ function ContactSection() {
                 <label htmlFor="contact-message">Meddelande</label>
                 <textarea id="contact-message" name="message" rows={5} placeholder="Vad vill du veta eller berätta?" required maxLength={2000} readOnly={isSending} className={`${fieldClassName} resize-y`} />
               </div>
-              <p id="form-notice" className="text-sm">Alla fält är obligatoriska. Meddelandet får vara högst 2 000 tecken.</p>
               {turnstileSiteKey ? (
                 <div ref={captchaContainerRef} className="min-w-0 w-full">
                   <Turnstile
