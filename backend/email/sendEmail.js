@@ -5,11 +5,12 @@ if (!process.env.FROM_EMAIL) throw Error('FROM_EMAIL not set');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-async function sendMail(to, templateId, variables) {
+async function sendMail(to, templateId, variables, { replyTo } = {}) {
 
     const { data, error } = await resend.emails.send({
         from: process.env.FROM_EMAIL,
         to: [to],
+        ...(replyTo ? { replyTo } : {}),
         template: {
             id: templateId,
             variables

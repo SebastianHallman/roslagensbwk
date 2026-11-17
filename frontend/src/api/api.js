@@ -15,6 +15,13 @@ async function fetchBoardMembers() {
     }
 }
 
+async function sendContactMessage(contact) {
+    return requestJson(`${API_URL}/contact`, {
+        method: 'POST',
+        data: contact,
+    });
+}
+
 async function signIn(email, password) {
     try {
         return await requestJson(`${API_URL}/auth/signin`, {
@@ -179,6 +186,6 @@ const updateBoardMember = (id, member) => boardRequest(`/${id}`, 'PUT', member);
 const deleteBoardMember = (id) => boardRequest(`/delete/${id}`, 'DELETE');
 const reorderBoardMembers = (ids) => boardRequest('/reorder', 'PUT', { ids });
 
-export { fetchBoardMembers, signIn, signOut, getCurrentUser, createAdminInvitation, redeemInvitation, requestPasswordReset, resetPassword,
+export { fetchBoardMembers, sendContactMessage, signIn, signOut, getCurrentUser, createAdminInvitation, redeemInvitation, requestPasswordReset, resetPassword,
     fetchAdminBoardMembers, addBoardMember, updateBoardMember, deleteBoardMember, reorderBoardMembers,
     createTournament, updateTournament, fetchAdminTournaments, fetchTournaments, deleteTournament, fetchNews, fetchAdminNews, createNews, updateNews, deleteNews };

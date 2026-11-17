@@ -1,3 +1,10 @@
+// Escape text before insertion into HTML, including Resend triple-brace variables.
+function escapeHtml(value) {
+    return value.replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[character]);
+}
+
 function formatTournamentJSON(tournamentRows) {
     const tournaments = new Map();
 
@@ -144,4 +151,4 @@ function validateNews(news) {
     return { title, body, status };
 }
 
-module.exports = { formatTournamentJSON, validMember, validId, validateTournament, validateTournamentUpdate, validateNews };
+module.exports = { escapeHtml, formatTournamentJSON, validMember, validId, validateTournament, validateTournamentUpdate, validateNews };

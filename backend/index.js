@@ -8,6 +8,7 @@ const boardRoutes = require('./routes/board');
 const authRoutes = require('./routes/auth');
 const tournamentRoutes = require('./routes/tournaments');
 const newsRoutes = require('./routes/news');
+const contactRoutes = require('./routes/contact');
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use('/board', boardRoutes);
 app.use('/auth', authRoutes);
 app.use('/tournaments', tournamentRoutes);
 app.use('/news', newsRoutes);
+app.use('/contact', contactRoutes);
 
 app.get('/health', async (req, res) => {
     const connectionStatus = await testConnection();
