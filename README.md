@@ -141,6 +141,18 @@ To preview a frontend production build locally, run `npm run preview` from `fron
 
 Static club content lives in `frontend/src/data/` and the frontend components. Board members, news, tournaments, rounds, admin accounts, invitations, and sessions are stored in MySQL.
 
+### Contact email configuration
+
+The backend accepts `POST /contact` with JSON fields `name`, `email`, `message`, and `turnstileToken`. Names are limited to 100 characters and messages to 2,000 characters (JavaScript string length). The general 10 kB JSON request limit also applies. Each IP can make five attempts per 15 minutes, including invalid submissions. Limits are held in memory per backend process and reset on restart.
+
+Set `RESEND_API_KEY`, `FROM_EMAIL` (a sender on a verified Resend domain), and `CONTACT_TO_EMAIL` (the club's recipient address) on the backend. Never expose these settings through Vite variables. Publish the Resend template alias `bwk-kontaktformular` with string variables `CONTACT_NAME`, `CONTACT_EMAIL`, and `CONTACT_MESSAGE`. Submitted content is HTML-escaped before insertion, and the visitor's address is used as `Reply-To`, while the sender remains `FROM_EMAIL`.
+
+Set `TURNSTILE_SECRET_KEY` and `TURNSTILE_HOSTNAME` on the backend. The hostname must exactly match the frontend hostname, without protocol, port, or path (for example `localhost` locally, or the club's frontend subdomain in production). After rate limiting, the backend verifies the token with Cloudflare's Siteverify API, requires `success: true`, the configured hostname, and action `contact`, and allows five seconds for the verification request and response body. Missing configuration or verification service failures block sending. No token or secret is logged. Use a separate development widget allowing `localhost` with real development keys to test these strict hostname and action checks; Cloudflare's dummy keys return `example.com` and omit the action.
+
+Set `VITE_TURNSTILE_SITE_KEY` in the frontend environment before building (or in `frontend/.env` for local development). Use the site key from the same widget as the backend secret, and allow the frontend hostname in that widget's Cloudflare settings. The React widget uses action `contact`, displays in Swedish, and resets after every submission attempt. The submit button stays disabled until a token is available. Missing configuration, loading failures, expired challenges, and rejected tokens show Swedish messages. Rebuild the frontend after changing its site key; restart the backend after changing its environment settings.
+
+Successful delivery requests return 200, invalid input or verification 400 (verification errors include `code: INVALID_CAPTCHA`), excessive attempts 429, missing configuration or verification service failures 503, and Resend failures 502. A 200 response confirms Resend accepted the request; it does not guarantee inbox delivery. The website form shows Swedish status and error messages, prevents duplicate submissions while sending, and clears the fields only after a successful response. Failed submissions retain their contents for retrying.
+
 ### Scheduled auth cleanup
 
 From `backend/`, run `npm run cleanup:auth` with the backend's `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME` environment variables. For local development with `backend/.env`, use `node --env-file=.env scripts/cleanup-auth.js` instead.
