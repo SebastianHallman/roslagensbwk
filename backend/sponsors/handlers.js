@@ -62,19 +62,26 @@ async function save(req, res) {
     const [result] = image === undefined
         ? await pool.execute(`UPDATE sponsors SET name = ? ${condition}`, [name.trim(), id, version])
         : await pool.execute(`UPDATE sponsors SET name = ?, image = ? ${condition}`, [name.trim(), image, id, version]);
-    if (!result.affectedRows) {
-        const [rows] = await pool.execute('SELECT id FROM sponsors WHERE id = ?', [id]);
-        if (!rows.length) return res.status(404).json({ error: 'Entry not found' });
-        return res.status(409).json({ error: 'Sponsor has changed' });
-    }
+    if (!result.affectedRows) return sponsorNotMatched(id, res);
     res.json({ id: Number(id) });
 }
 
+async function sponsorNotMatched(id, res) {
+    const [rows] = await pool.execute('SELECT id FROM sponsors WHERE id = ?', [id]);
+    if (!rows.length) return res.status(404).json({ error: 'Entry not found' });
+    return res.status(409).json({ error: 'Sponsor has changed' });
+}
+
 async function remove(req, res) {
-    if (!validId(req.params.id)) return res.status(400).json({ error: 'Invalid ID' });
-    const [result] = await pool.execute('DELETE FROM sponsors WHERE id = ?', [req.params.id]);
-    if (!result.affectedRows) return res.status(404).json({ error: 'Entry not found' });
-    res.json({ id: Number(req.params.id) });
+    const { id } = req.params;
+    if (!validId(id)) return res.status(400).json({ error: 'Invalid ID' });
+    const { version } = req.query;
+    if (typeof version !== 'string' || !/^[0-9a-f]{64}$/.test(version)) {
+        return res.status(409).json({ error: 'Reload the sponsor before deleting' });
+    }
+    const [result] = await pool.execute(`DELETE FROM sponsors WHERE id = ? AND ${sponsorVersion} = ?`, [id, version]);
+    if (!result.affectedRows) return sponsorNotMatched(id, res);
+    res.json({ id: Number(id) });
 }
 
 module.exports = { list, getImage, save, remove };

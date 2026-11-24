@@ -24,8 +24,8 @@ export function saveSponsor(sponsor: SponsorInput, original: Sponsor | null) {
   })
 }
 
-export function deleteSponsor(id: number) {
-  return requestJson(`${endpoint}/${id}`, { method: 'DELETE', credentials: 'include' })
+export function deleteSponsor(sponsor: Sponsor) {
+  return requestJson(`${endpoint}/${sponsor.id}?version=${encodeURIComponent(sponsor.version)}`, { method: 'DELETE', credentials: 'include' })
 }
 
 export function useSponsors() {

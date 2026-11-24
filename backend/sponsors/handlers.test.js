@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const sharp = require('sharp');
 const { pool } = require('../db');
-const { save } = require('./handlers');
+const { save, remove } = require('./handlers');
 
 function dataUrl(format, bytes) {
     return `data:image/${format};base64,${bytes.toString('base64')}`;
@@ -56,4 +56,28 @@ test('guards both sponsor update paths with the name and image revision', async 
     assert.equal(await updateSponsor(undefined), 409);
     assert.equal(await updateSponsor(null), 409);
     assert.equal(execute.mock.callCount(), 4);
+});
+
+test('deletes only the confirmed sponsor version and distinguishes missing sponsors', async (t) => {
+    const version = 'b'.repeat(64);
+    let exists = true;
+    const execute = t.mock.method(pool, 'execute', async (sql, values) => {
+        if (sql.startsWith('DELETE')) {
+            assert.match(sql, /WHERE id = \? AND SHA2\(JSON_ARRAY\(name, SHA2\(image, 256\)\), 256\) = \?/);
+            assert.deepEqual(values, ['2', version]);
+            return [{ affectedRows: 0 }];
+        }
+        assert.equal(sql, 'SELECT id FROM sponsors WHERE id = ?');
+        return [exists ? [{ id: 2 }] : []];
+    });
+    const res = { status(code) { this.statusCode = code; return this; }, json() {} };
+    const params = { id: '2' };
+    await remove({ params, query: {} }, res);
+    assert.equal(res.statusCode, 409);
+    assert.equal(execute.mock.callCount(), 0);
+    await remove({ params, query: { version } }, res);
+    assert.equal(res.statusCode, 409);
+    exists = false;
+    await remove({ params, query: { version } }, res);
+    assert.equal(res.statusCode, 404);
 });

@@ -30,6 +30,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
   const [reviewDraft, setReviewDraft] = useState(false)
   const latest = reviewDraft && editing ? entries?.find((entry) => entry.id === editing.id) : undefined
   const nameInput = useRef<HTMLInputElement>(null)
+  const imageInput = useRef<HTMLInputElement>(null)
   const editorTrigger = useRef<HTMLButtonElement | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -118,13 +119,16 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
     setError('')
     setNotice('')
     try {
-      await deleteSponsor(entry.id)
+      await deleteSponsor(entry)
       setRemoving(null)
       setNotice('Posten togs bort.')
       reloadList()
     } catch (failure) {
       setRemoving(null)
-      handleFailure(failure)
+      if (getApiErrorDetails(failure).status === 409) {
+        setError('Sponsorn har ändrats och togs inte bort. Kontrollera uppgifterna innan du bekräftar en ny borttagning.')
+        reloadList(entry.id)
+      } else handleFailure(failure)
     } finally {
       setPending(false)
     }
@@ -133,6 +137,10 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
   function resumeDraft() {
     if (editing && latest) {
       if (name.trim() === editing.name) setName(latest.name)
+      if (removeLogo && !latest.image) {
+        if (imageInput.current) imageInput.current.value = ''
+        setRemoveLogo(false)
+      }
       setEditor(latest)
     }
     setReviewDraft(false)
@@ -190,7 +198,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
               </>
             )}
             <label>Logotyp (valfri, högst 512 kB och 16 megapixlar)
-              <input type="file" name="image" accept="image/png,image/jpeg,image/webp" disabled={removeLogo} />
+              <input ref={imageInput} type="file" name="image" accept="image/png,image/jpeg,image/webp" disabled={removeLogo} />
             </label>
             <div className="mt-4 flex flex-wrap gap-3">
               <button className="admin-button mt-0! w-auto!" type="submit" disabled={reviewDraft}>{pending ? 'Sparar…' : 'Spara'}</button>
