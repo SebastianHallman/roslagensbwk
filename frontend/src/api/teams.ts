@@ -11,11 +11,12 @@ export async function getTeams(signal?: AbortSignal): Promise<Team[]> {
   return requestJson(endpoint, { signal })
 }
 
-export function saveTeam(team: TeamInput, original: Team | null) {
-  return requestJson(original ? `${endpoint}/${original.id}` : endpoint, {
-    method: original ? 'PUT' : 'POST',
+export function saveTeam(team: TeamInput, target: Team | string) {
+  const creating = typeof target === 'string'
+  return requestJson(creating ? endpoint : `${endpoint}/${target.id}`, {
+    method: creating ? 'POST' : 'PUT',
     credentials: 'include',
-    data: original ? { ...team, version: original.version } : team,
+    data: creating ? { ...team, requestId: target } : { ...team, version: target.version },
   })
 }
 

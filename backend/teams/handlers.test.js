@@ -5,7 +5,11 @@ const { list, save, remove } = require('./handlers');
 
 test('stores absolute results links when creating and updating a team', async (t) => {
     const execute = t.mock.method(pool, 'execute', async () => [{ insertId: 1, affectedRows: 1 }]);
-    const body = { name: 'Team', series: [
+    t.mock.method(pool, 'getConnection', async () => ({
+        beginTransaction() {}, commit() {}, release() {}, rollback() {},
+        execute: (sql, args) => sql.startsWith('SELECT entry_id') ? [[{ entry_id: null }]] : pool.execute(sql, args),
+    }));
+    const body = { name: 'Team', requestId: '1'.repeat(32), series: [
         { name: 'First', url: 'https:example.org/results' },
         { name: 'Second', url: 'http://example.org/series?q=1#results' },
         { name: 'Third', url: '' },
@@ -15,7 +19,7 @@ test('stores absolute results links when creating and updating a team', async (t
     const res = { status() { return this; }, json() {} };
     for (const params of [{}, { id: '1' }]) {
         await save({ params, body: params.id ? { ...body, version: 'a'.repeat(64) } : body }, res);
-        const [, values] = execute.mock.calls.at(-1).arguments;
+        const [, values] = execute.mock.calls.findLast(call => /^(INSERT INTO teams|UPDATE teams)/.test(call.arguments[0])).arguments;
         const urls = JSON.parse(values[1]).map((entry) => entry.url);
         assert.deepEqual(urls, [
             'https://example.org/results', body.series[1].url, '',

@@ -47,7 +47,7 @@ test('rejects a JPEG with readable metadata but incomplete pixel data', async (t
 test('guards both sponsor update paths with the name and image revision', async (t) => {
     const execute = t.mock.method(pool, 'execute', async (sql, values) => {
         if (sql.startsWith('UPDATE')) {
-            assert.match(sql, /WHERE id = \? AND SHA2\(JSON_ARRAY\(name, SHA2\(image, 256\)\), 256\) = \?/);
+            assert.match(sql, /WHERE id = \? AND version = \?/);
             assert.deepEqual(values.slice(-2), ['2', 'a'.repeat(64)]);
             return [{ affectedRows: 0 }];
         }
@@ -63,7 +63,7 @@ test('deletes only the confirmed sponsor version and distinguishes missing spons
     let exists = true;
     const execute = t.mock.method(pool, 'execute', async (sql, values) => {
         if (sql.startsWith('DELETE')) {
-            assert.match(sql, /WHERE id = \? AND SHA2\(JSON_ARRAY\(name, SHA2\(image, 256\)\), 256\) = \?/);
+            assert.match(sql, /WHERE id = \? AND version = \?/);
             assert.deepEqual(values, ['2', version]);
             return [{ affectedRows: 0 }];
         }

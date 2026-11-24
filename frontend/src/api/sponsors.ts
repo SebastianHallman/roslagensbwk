@@ -16,11 +16,12 @@ export async function getSponsors(signal?: AbortSignal): Promise<Sponsor[]> {
   }))
 }
 
-export function saveSponsor(sponsor: SponsorInput, original: Sponsor | null) {
-  return requestJson(original ? `${endpoint}/${original.id}` : endpoint, {
-    method: original ? 'PUT' : 'POST',
+export function saveSponsor(sponsor: SponsorInput, target: Sponsor | string) {
+  const creating = typeof target === 'string'
+  return requestJson(creating ? endpoint : `${endpoint}/${target.id}`, {
+    method: creating ? 'POST' : 'PUT',
     credentials: 'include',
-    data: original ? { ...sponsor, version: original.version } : sponsor,
+    data: creating ? { ...sponsor, requestId: target } : { ...sponsor, version: target.version },
   })
 }
 

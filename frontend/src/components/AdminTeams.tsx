@@ -4,20 +4,22 @@ import { deleteTeam, getTeams, saveTeam } from '../api/teams'
 import type { Team, Series } from '../api/teams'
 import { getApiErrorDetails } from '../api/errors'
 import ConfirmDialog from './ConfirmDialog'
-import { useAdminList } from './useAdminList'
+import { newDraftId, useAdminList } from './useAdminList'
 
 const actionClass = 'min-h-11 cursor-pointer rounded border border-black/30 px-3 py-2 text-sm hover:enabled:bg-black/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-default disabled:opacity-50'
 
 function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
   const { entries, loadFailed, reloadList, focusTarget, focusNew } = useAdminList(getTeams)
-  const [editor, setEditor] = useState<Team | 'new' | null>(null)
-  const editing = editor === 'new' ? null : editor
+  const [editor, setEditor] = useState<Team | string | null>(null)
+  const editing = typeof editor === 'string' ? null : editor
+  const [createdId, setCreatedId] = useState<number | null>(null)
   const [name, setName] = useState('')
   const [removing, setRemoving] = useState<Team | null>(null)
   const [series, setSeries] = useState<Series[]>([])
   const [pending, setPending] = useState(false)
   const [reviewDraft, setReviewDraft] = useState(false)
-  const latest = reviewDraft && editing ? entries?.find((entry) => entry.id === editing.id) : undefined
+  const reviewId = editing?.id ?? createdId
+  const latest = reviewDraft && reviewId !== null ? entries?.find((entry) => entry.id === reviewId) : undefined
   const nameInput = useRef<HTMLInputElement>(null)
   const editorTrigger = useRef<HTMLButtonElement | null>(null)
   const [error, setError] = useState('')
@@ -34,7 +36,8 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
 
   function select(entry: Team | 'new' | null, trigger?: HTMLButtonElement) {
     if (trigger) editorTrigger.current = trigger
-    setEditor(entry)
+    setEditor(entry === 'new' ? newDraftId() : entry)
+    setCreatedId(null)
     setName(entry && entry !== 'new' ? entry.name : '')
     setReviewDraft(false)
     setSeries(entry && entry !== 'new' ? entry.series : [])
@@ -54,7 +57,7 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
       setReviewDraft(true)
       setError('Laget har ändrats. Jämför ditt utkast med den sparade versionen innan du fortsätter.')
       reloadList(editing.id)
-    } else if (editor === 'new' && (status === undefined || status === 408 || status >= 500)) {
+    } else if (typeof editor === 'string' && (status === undefined || status === 408 || status >= 500)) {
       setReviewDraft(true)
       setError('Det gick inte att bekräfta om laget skapades. Kontrollera listan innan du fortsätter med utkastet.')
       reloadList()
@@ -65,7 +68,7 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (pending || reviewDraft) return
+    if (!editor || pending || reviewDraft) return
     setError('')
     setNotice('')
     if (!name.trim() || series.some((entry) => !entry.name.trim())) {
@@ -77,7 +80,14 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
       const saved = await saveTeam({
         name: name.trim(),
         series: series.map((entry) => ({ name: entry.name.trim(), url: entry.url.trim() })),
-      }, editing)
+      }, editor)
+      if (saved.reviewExisting) {
+        setCreatedId(saved.id)
+        setReviewDraft(true)
+        setError('Laget skapades redan vid ett tidigare försök. Jämför den sparade posten med ditt ändrade utkast.')
+        reloadList(saved.id)
+        return
+      }
       select(null)
       setNotice('Ändringen sparades.')
       reloadList(saved.id)
@@ -114,8 +124,8 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
       const seriesUnchanged = series.length === editing.series.length && series.every((draft, i) =>
         draft.name.trim() === editing.series[i].name && draft.url.trim() === editing.series[i].url)
       if (seriesUnchanged) setSeries(latest.series)
-      setEditor(latest)
     }
+    if (latest) setEditor(latest)
     setReviewDraft(false)
     setError('')
   }
@@ -153,16 +163,16 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
             ) : <p>Inga serier.</p>}
           </section>
         )}
-        {reviewDraft && editing && entries && !latest && <p>Laget finns inte längre. Du kan kopiera uppgifterna från utkastet.</p>}
+        {reviewDraft && reviewId !== null && entries && !latest && <p>Laget finns inte längre. Du kan kopiera uppgifterna från utkastet.</p>}
         {reviewDraft && entries !== null && (
           <div className="mt-4 flex flex-wrap gap-3">
-            {(!editing || latest) && <button type="button" className={actionClass} autoFocus onClick={resumeDraft}>Fortsätt med utkastet</button>}
-            {!editing && <button type="button" className={actionClass} onClick={() => select(null)}>Stäng utkastet</button>}
+            {(reviewId === null || latest) && <button type="button" className={actionClass} autoFocus onClick={resumeDraft}>Fortsätt med utkastet</button>}
+            {reviewId === null && <button type="button" className={actionClass} onClick={() => select(null)}>Stäng utkastet</button>}
           </div>
         )}
 
         {editor !== null && (
-          <form hidden={reviewDraft && !editing} className="admin-form min-w-0 rounded-lg border border-black/20 border-t-4 border-t-red bg-warm-white p-5 min-[40rem]:p-7" aria-labelledby="team-editor-heading" onSubmit={submit}>
+          <form hidden={reviewDraft && reviewId === null} className="admin-form min-w-0 rounded-lg border border-black/20 border-t-4 border-t-red bg-warm-white p-5 min-[40rem]:p-7" aria-labelledby="team-editor-heading" onSubmit={submit}>
             <h3 id="team-editor-heading" className="mb-6 font-heading text-2xl">{reviewDraft ? 'Ditt utkast' : editing ? `Redigera ${editing.name}` : 'Nytt lag'}</h3>
             <label>Namn<input ref={nameInput} name="name" required maxLength={150} value={name} onChange={(event) => setName(event.target.value)} /></label>
             <fieldset className="grid min-w-0 gap-3 border-0 p-0">

@@ -1,5 +1,6 @@
 const { pool } = require('../db');
 const { validId } = require('../utils');
+const { createDirectoryEntry } = require('../directory/create');
 
 // Use the stored values so existing teams also have a revision, without a schema change.
 const teamVersion = 'SHA2(JSON_ARRAY(name, series), 256)';
@@ -56,8 +57,8 @@ async function save(req, res) {
     }
     const values = [name.trim(), JSON.stringify(normalizedSeries)];
     if (id === undefined) {
-        const [result] = await pool.execute('INSERT INTO teams (name, series) VALUES (?, ?)', values);
-        return res.status(201).json({ id: result.insertId });
+        return createDirectoryEntry(res, 'team', req.body.requestId,
+            'INSERT INTO teams (name, series) VALUES (?, ?)', values);
     }
 
     const { version } = req.body;

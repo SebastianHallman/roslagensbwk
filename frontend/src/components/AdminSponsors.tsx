@@ -4,7 +4,7 @@ import { deleteSponsor, getSponsors, saveSponsor } from '../api/sponsors'
 import type { Sponsor } from '../api/sponsors'
 import { getApiErrorDetails } from '../api/errors'
 import ConfirmDialog from './ConfirmDialog'
-import { useAdminList } from './useAdminList'
+import { newDraftId, useAdminList } from './useAdminList'
 
 const maxImageBytes = 512 * 1024
 
@@ -21,14 +21,16 @@ const actionClass = 'min-h-11 cursor-pointer rounded border border-black/30 px-3
 
 function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
   const { entries, loadFailed, reloadList, focusTarget, focusNew } = useAdminList(getSponsors)
-  const [editor, setEditor] = useState<Sponsor | 'new' | null>(null)
-  const editing = editor === 'new' ? null : editor
+  const [editor, setEditor] = useState<Sponsor | string | null>(null)
+  const editing = typeof editor === 'string' ? null : editor
+  const [createdId, setCreatedId] = useState<number | null>(null)
   const [name, setName] = useState('')
   const [removeLogo, setRemoveLogo] = useState(false)
   const [removing, setRemoving] = useState<Sponsor | null>(null)
   const [pending, setPending] = useState(false)
   const [reviewDraft, setReviewDraft] = useState(false)
-  const latest = reviewDraft && editing ? entries?.find((entry) => entry.id === editing.id) : undefined
+  const reviewId = editing?.id ?? createdId
+  const latest = reviewDraft && reviewId !== null ? entries?.find((entry) => entry.id === reviewId) : undefined
   const nameInput = useRef<HTMLInputElement>(null)
   const imageInput = useRef<HTMLInputElement>(null)
   const editorTrigger = useRef<HTMLButtonElement | null>(null)
@@ -46,7 +48,8 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
 
   function select(entry: Sponsor | 'new' | null, trigger?: HTMLButtonElement) {
     if (trigger) editorTrigger.current = trigger
-    setEditor(entry)
+    setEditor(entry === 'new' ? newDraftId() : entry)
+    setCreatedId(null)
     setName(entry && entry !== 'new' ? entry.name : '')
     setReviewDraft(false)
     setRemoveLogo(false)
@@ -66,7 +69,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
       setReviewDraft(true)
       setError('Sponsorn har ändrats. Jämför ditt utkast med den sparade versionen innan du fortsätter.')
       reloadList(editing.id)
-    } else if (editor === 'new' && (status === undefined || status === 408 || status >= 500)) {
+    } else if (typeof editor === 'string' && (status === undefined || status === 408 || status >= 500)) {
       setReviewDraft(true)
       setError('Det gick inte att bekräfta om sponsorn skapades. Kontrollera listan innan du fortsätter med utkastet.')
       reloadList()
@@ -77,7 +80,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (pending || reviewDraft) return
+    if (!editor || pending || reviewDraft) return
     const fields = new FormData(event.currentTarget)
     setError('')
     setNotice('')
@@ -103,7 +106,14 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
           return
         }
       }
-      const saved = await saveSponsor({ name: name.trim(), image }, editing)
+      const saved = await saveSponsor({ name: name.trim(), image }, editor)
+      if (saved.reviewExisting) {
+        setCreatedId(saved.id)
+        setReviewDraft(true)
+        setError('Sponsorn skapades redan vid ett tidigare försök. Jämför den sparade posten med ditt ändrade utkast.')
+        reloadList(saved.id)
+        return
+      }
       select(null)
       setNotice('Ändringen sparades.')
       reloadList(saved.id)
@@ -141,8 +151,8 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
         if (imageInput.current) imageInput.current.value = ''
         setRemoveLogo(false)
       }
-      setEditor(latest)
     }
+    if (latest) setEditor(latest)
     setReviewDraft(false)
     setError('')
   }
@@ -176,16 +186,16 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
             {latest.image ? <img src={latest.image} alt={`Sparad logotyp för ${latest.name}`} className="h-20 w-auto" /> : <p>Ingen logotyp.</p>}
           </section>
         )}
-        {reviewDraft && editing && entries && !latest && <p>Sponsorn finns inte längre. Du kan kopiera uppgifterna från utkastet.</p>}
+        {reviewDraft && reviewId !== null && entries && !latest && <p>Sponsorn finns inte längre. Du kan kopiera uppgifterna från utkastet.</p>}
         {reviewDraft && entries !== null && (
           <div className="mt-4 flex flex-wrap gap-3">
-            {(!editing || latest) && <button type="button" className={actionClass} autoFocus onClick={resumeDraft}>Fortsätt med utkastet</button>}
-            {!editing && <button type="button" className={actionClass} onClick={() => select(null)}>Stäng utkastet</button>}
+            {(reviewId === null || latest) && <button type="button" className={actionClass} autoFocus onClick={resumeDraft}>Fortsätt med utkastet</button>}
+            {reviewId === null && <button type="button" className={actionClass} onClick={() => select(null)}>Stäng utkastet</button>}
           </div>
         )}
 
         {editor !== null && (
-          <form hidden={reviewDraft && !editing} className="admin-form min-w-0 rounded-lg border border-black/20 border-t-4 border-t-red bg-warm-white p-5 min-[40rem]:p-7" aria-labelledby="sponsor-editor-heading" onSubmit={submit}>
+          <form hidden={reviewDraft && reviewId === null} className="admin-form min-w-0 rounded-lg border border-black/20 border-t-4 border-t-red bg-warm-white p-5 min-[40rem]:p-7" aria-labelledby="sponsor-editor-heading" onSubmit={submit}>
             <h3 id="sponsor-editor-heading" className="mb-6 font-heading text-2xl">{reviewDraft ? 'Ditt utkast' : editing ? `Redigera ${editing.name}` : 'Ny sponsor'}</h3>
             <label>Namn<input ref={nameInput} name="name" required maxLength={150} value={name} onChange={(event) => setName(event.target.value)} /></label>
             {editing?.image && (

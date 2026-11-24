@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
 
+export function newDraftId() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
 export function useAdminList<T extends { id: number }>(load: (signal: AbortSignal) => Promise<T[]>) {
   const [entries, setEntries] = useState<T[] | null>(null)
   const [loadVersion, setLoadVersion] = useState(0)

@@ -1,7 +1,7 @@
 const sharp = require('sharp');
 const { pool } = require('../db');
 const { validId } = require('../utils');
-const sponsorVersion = 'SHA2(JSON_ARRAY(name, SHA2(image, 256)), 256)';
+const { createDirectoryEntry } = require('../directory/create');
 
 const maxImageBytes = 512 * 1024;
 const maxImagePixels = 16_000_000;
@@ -27,7 +27,7 @@ async function validImage(image) {
 }
 
 async function list(req, res) {
-    const [rows] = await pool.execute(`SELECT id, name, image IS NOT NULL AS hasImage, ${sponsorVersion} AS version FROM sponsors ORDER BY id`);
+    const [rows] = await pool.execute('SELECT id, name, has_image AS hasImage, version FROM sponsors ORDER BY id');
     res.json(rows);
 }
 
@@ -50,15 +50,15 @@ async function save(req, res) {
     }
 
     if (id === undefined) {
-        const [result] = await pool.execute('INSERT INTO sponsors (name, image) VALUES (?, ?)', [name.trim(), image ?? null]);
-        return res.status(201).json({ id: result.insertId });
+        return createDirectoryEntry(res, 'sponsor', req.body.requestId,
+            'INSERT INTO sponsors (name, image) VALUES (?, ?)', [name.trim(), image ?? null]);
     }
 
     const { version } = req.body;
     if (typeof version !== 'string' || !/^[0-9a-f]{64}$/.test(version)) {
         return res.status(409).json({ error: 'Reload the sponsor before editing' });
     }
-    const condition = `WHERE id = ? AND ${sponsorVersion} = ?`;
+    const condition = 'WHERE id = ? AND version = ?';
     const [result] = image === undefined
         ? await pool.execute(`UPDATE sponsors SET name = ? ${condition}`, [name.trim(), id, version])
         : await pool.execute(`UPDATE sponsors SET name = ?, image = ? ${condition}`, [name.trim(), image, id, version]);
@@ -79,7 +79,7 @@ async function remove(req, res) {
     if (typeof version !== 'string' || !/^[0-9a-f]{64}$/.test(version)) {
         return res.status(409).json({ error: 'Reload the sponsor before deleting' });
     }
-    const [result] = await pool.execute(`DELETE FROM sponsors WHERE id = ? AND ${sponsorVersion} = ?`, [id, version]);
+    const [result] = await pool.execute('DELETE FROM sponsors WHERE id = ? AND version = ?', [id, version]);
     if (!result.affectedRows) return sponsorNotMatched(id, res);
     res.json({ id: Number(id) });
 }
