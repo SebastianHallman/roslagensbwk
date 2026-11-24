@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { deleteSponsor, getSponsors, saveSponsor } from '../api/sponsors'
 import type { Sponsor } from '../api/sponsors'
@@ -26,11 +26,25 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
   const [removeLogo, setRemoveLogo] = useState(false)
   const [removing, setRemoving] = useState<Sponsor | null>(null)
   const [pending, setPending] = useState(false)
+  const [reviewDraft, setReviewDraft] = useState(false)
+  const nameInput = useRef<HTMLInputElement>(null)
+  const editorTrigger = useRef<HTMLButtonElement | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
-  function select(entry: Sponsor | 'new' | null) {
+  useEffect(() => {
+    if (editor === null) {
+      if (editorTrigger.current?.isConnected) editorTrigger.current.focus()
+      editorTrigger.current = null
+    } else if (!reviewDraft) {
+      nameInput.current?.focus()
+    }
+  }, [editor, reviewDraft])
+
+  function select(entry: Sponsor | 'new' | null, trigger?: HTMLButtonElement) {
+    if (trigger) editorTrigger.current = trigger
     setEditor(entry)
+    setReviewDraft(false)
     setRemoveLogo(false)
     setError('')
     setNotice('')
@@ -44,8 +58,8 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
       setError('Sponsorn finns inte längre.')
       reloadList()
     } else if (editor === 'new' && (status === undefined || status === 408 || status >= 500)) {
-      select(null)
-      setError('Det gick inte att bekräfta om sponsorn skapades. Kontrollera listan innan du lägger till sponsorn igen.')
+      setReviewDraft(true)
+      setError('Det gick inte att bekräfta om sponsorn skapades. Kontrollera listan innan du fortsätter med utkastet.')
       reloadList()
     } else setError(status === 400 || status === 413
       ? 'Kontrollera sponsorns namn och logotyp.'
@@ -54,7 +68,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (pending) return
+    if (pending || reviewDraft) return
     const fields = new FormData(event.currentTarget)
     const name = String(fields.get('name')).trim()
     setError('')
@@ -109,32 +123,39 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
     }
   }
 
-  if (entries === null) {
-    if (!loadFailed) return <p role="status" className="mt-6 text-sm">Hämtar sponsorer…</p>
-    return (
+  const loadingView = entries === null && (
+    loadFailed ? (
       <div className="mt-6">
         {notice && <p role="status">{notice}</p>}
         {error && <p role="alert">{error}</p>}
         <p role="alert">Det gick inte att hämta listan.</p>
         <button type="button" className={actionClass + ' mt-4'} autoFocus={focusTarget !== null} onClick={() => reloadList(focusTarget ?? 'new')}>Försök igen</button>
       </div>
-    )
-  }
+    ) : <p role="status" className="mt-6 text-sm">Hämtar sponsorer…</p>
+  )
+  if (entries === null && !reviewDraft) return loadingView
 
   return (
     <div className="min-w-0 max-w-full wrap-anywhere">
-      <fieldset className="min-w-0 border-0 p-0" disabled={pending}>
+      {loadingView}
+      <fieldset hidden={entries === null} className="min-w-0 border-0 p-0" disabled={pending}>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-          <p className="text-sm">{entries.length} {entries.length === 1 ? 'sponsor' : 'sponsorer'}</p>
-          <button type="button" className="admin-button mt-0! w-auto!" autoFocus={focusNew} disabled={editor !== null} onClick={() => select('new')}>+ Ny sponsor</button>
+          <p className="text-sm">{entries?.length} {entries?.length === 1 ? 'sponsor' : 'sponsorer'}</p>
+          <button type="button" className="admin-button mt-0! w-auto!" autoFocus={focusNew} disabled={editor !== null} onClick={(event) => select('new', event.currentTarget)}>+ Ny sponsor</button>
         </div>
         {notice && <p role="status" className="admin-notice mt-5">{notice}</p>}
         {error && <p role="alert" className="admin-error mt-5">{error}</p>}
+        {reviewDraft && entries !== null && (
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button type="button" className={actionClass} autoFocus onClick={() => { setReviewDraft(false); setError('') }}>Fortsätt med utkastet</button>
+            <button type="button" className={actionClass} onClick={() => select(null)}>Stäng utkastet</button>
+          </div>
+        )}
 
         {editor !== null && (
-          <form className="admin-form min-w-0 rounded-lg border border-black/20 border-t-4 border-t-red bg-warm-white p-5 min-[40rem]:p-7" aria-labelledby="sponsor-editor-heading" onSubmit={submit}>
+          <form hidden={reviewDraft} className="admin-form min-w-0 rounded-lg border border-black/20 border-t-4 border-t-red bg-warm-white p-5 min-[40rem]:p-7" aria-labelledby="sponsor-editor-heading" onSubmit={submit}>
             <h3 id="sponsor-editor-heading" className="mb-6 font-heading text-2xl">{editing ? `Redigera ${editing.name}` : 'Ny sponsor'}</h3>
-            <label>Namn<input name="name" autoFocus required maxLength={150} defaultValue={editing?.name} /></label>
+            <label>Namn<input ref={nameInput} name="name" required maxLength={150} defaultValue={editing?.name} /></label>
             {editing?.image && (
               <>
                 <img src={editing.image} alt={`Nuvarande bild för ${editing.name}`} className="mb-3 h-20 w-auto max-w-full object-contain" />
@@ -154,13 +175,13 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
           </form>
         )}
 
-        {entries.length === 0 ? <p className="mt-6 text-sm">Inga sponsorer ännu.</p> : (
+        {entries?.length === 0 ? <p className="mt-6 text-sm">Inga sponsorer ännu.</p> : (
           <ul className="mt-5 grid min-w-0 list-none gap-4 p-0" aria-label="Sponsorer">
-            {entries.map((entry) => (
+            {entries?.map((entry) => (
               <li key={entry.id} className="min-w-0 rounded-lg border border-black/20 bg-[#fff] p-5">
                 <h3 className="font-heading text-2xl leading-tight">{entry.name}</h3>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <button type="button" className={actionClass} autoFocus={focusTarget === entry.id} disabled={editor !== null} onClick={() => select(entry)} aria-label={`Redigera ${entry.name}`}>Redigera</button>
+                  <button type="button" className={actionClass} autoFocus={focusTarget === entry.id} disabled={editor !== null} onClick={(event) => select(entry, event.currentTarget)} aria-label={`Redigera ${entry.name}`}>Redigera</button>
                   <button type="button" className={actionClass} disabled={editor !== null} aria-haspopup="dialog" onClick={() => setRemoving(entry)} aria-label={`Ta bort ${entry.name}`}>Ta bort</button>
                 </div>
               </li>

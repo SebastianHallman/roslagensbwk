@@ -3,20 +3,19 @@ import { requestJson } from './requestJson.js'
 
 export type Series = { name: string; url: string }
 type TeamInput = { name: string; series: Series[] }
-export type Team = TeamInput & { id: number }
+export type Team = TeamInput & { id: number; version: string }
 
 const endpoint = `${import.meta.env.VITE_API_URL}/teams`
 
 export async function getTeams(signal?: AbortSignal): Promise<Team[]> {
-  const rows: Team[] = await requestJson(endpoint, { signal })
-  return rows.map(({ id, name, series }) => ({ id, name, series }))
+  return requestJson(endpoint, { signal })
 }
 
-export function saveTeam(team: TeamInput, id?: number) {
-  return requestJson(id === undefined ? endpoint : `${endpoint}/${id}`, {
-    method: id === undefined ? 'POST' : 'PUT',
+export function saveTeam(team: TeamInput, original: Team | null) {
+  return requestJson(original ? `${endpoint}/${original.id}` : endpoint, {
+    method: original ? 'PUT' : 'POST',
     credentials: 'include',
-    data: team,
+    data: original ? { ...team, version: original.version } : team,
   })
 }
 

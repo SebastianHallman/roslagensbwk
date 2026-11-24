@@ -1,6 +1,9 @@
 const { pool } = require('../db');
 const { validId } = require('../utils');
 
+// Use the stored values so existing teams also have a revision, without a schema change.
+const teamVersion = 'SHA2(JSON_ARRAY(name, series), 256)';
+
 function shortText(value, limit) {
     return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= limit;
 }
@@ -28,7 +31,7 @@ function normalizeSeriesLink(value) {
 }
 
 async function list(req, res) {
-    const [rows] = await pool.execute('SELECT id, name, series FROM teams ORDER BY id');
+    const [rows] = await pool.execute(`SELECT id, name, series, ${teamVersion} AS version FROM teams ORDER BY id`);
     res.json(rows.map((row) => {
         const series = typeof row.series === 'string' ? JSON.parse(row.series) : row.series;
         return { ...row, series: series.map((entry) => ({ ...entry, url: normalizeSeriesLink(entry.url) ?? '' })) };
@@ -57,8 +60,19 @@ async function save(req, res) {
         return res.status(201).json({ id: result.insertId });
     }
 
-    const [result] = await pool.execute('UPDATE teams SET name = ?, series = ? WHERE id = ?', [...values, id]);
-    if (!result.affectedRows) return res.status(404).json({ error: 'Entry not found' });
+    const { version } = req.body;
+    if (typeof version !== 'string' || !/^[0-9a-f]{64}$/.test(version)) {
+        return res.status(409).json({ error: 'Reload the team before editing' });
+    }
+    const [result] = await pool.execute(
+        `UPDATE teams SET name = ?, series = ? WHERE id = ? AND ${teamVersion} = ?`,
+        [...values, id, version]
+    );
+    if (!result.affectedRows) {
+        const [rows] = await pool.execute('SELECT id FROM teams WHERE id = ?', [id]);
+        if (!rows.length) return res.status(404).json({ error: 'Entry not found' });
+        return res.status(409).json({ error: 'Team has changed' });
+    }
     res.json({ id: Number(id) });
 }
 

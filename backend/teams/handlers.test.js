@@ -14,7 +14,7 @@ test('stores absolute results links when creating and updating a team', async (t
     ] };
     const res = { status() { return this; }, json() {} };
     for (const params of [{}, { id: '1' }]) {
-        await save({ params, body }, res);
+        await save({ params, body: params.id ? { ...body, version: 'a'.repeat(64) } : body }, res);
         const [, values] = execute.mock.calls.at(-1).arguments;
         const urls = JSON.parse(values[1]).map((entry) => entry.url);
         assert.deepEqual(urls, [
@@ -22,6 +22,32 @@ test('stores absolute results links when creating and updating a team', async (t
             'https://example.org/results?q=1#scores', 'https://results.example.org:8443/scores',
         ]);
     }
+});
+
+test('updates only the team revision the editor opened and distinguishes a deleted team', async (t) => {
+    const version = 'a'.repeat(64);
+    let exists = true;
+    const execute = t.mock.method(pool, 'execute', async (sql, values) => {
+        if (sql.startsWith('UPDATE')) {
+            assert.match(sql, /WHERE id = \? AND SHA2\(JSON_ARRAY\(name, series\), 256\) = \?/);
+            assert.deepEqual(values.slice(-2), ['1', version]);
+            return [{ affectedRows: 0 }];
+        }
+        assert.equal(sql, 'SELECT id FROM teams WHERE id = ?');
+        return [exists ? [{ id: 1 }] : []];
+    });
+    const req = { params: { id: '1' }, body: { name: 'New name', series: [] } };
+    const res = { status(code) { this.statusCode = code; return this; }, json() {} };
+    await save(req, res);
+    assert.equal(res.statusCode, 409);
+    assert.equal(execute.mock.callCount(), 0);
+
+    req.body.version = version;
+    await save(req, res);
+    assert.equal(res.statusCode, 409);
+    exists = false;
+    await save(req, res);
+    assert.equal(res.statusCode, 404);
 });
 
 test('returns absolute links for previously stored series in either MySQL JSON format', async (t) => {

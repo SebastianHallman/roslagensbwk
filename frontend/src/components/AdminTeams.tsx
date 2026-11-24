@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { deleteTeam, getTeams, saveTeam } from '../api/teams'
 import type { Team, Series } from '../api/teams'
@@ -15,11 +15,25 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
   const [removing, setRemoving] = useState<Team | null>(null)
   const [series, setSeries] = useState<Series[]>([])
   const [pending, setPending] = useState(false)
+  const [reviewDraft, setReviewDraft] = useState(false)
+  const nameInput = useRef<HTMLInputElement>(null)
+  const editorTrigger = useRef<HTMLButtonElement | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
-  function select(entry: Team | 'new' | null) {
+  useEffect(() => {
+    if (editor === null) {
+      if (editorTrigger.current?.isConnected) editorTrigger.current.focus()
+      editorTrigger.current = null
+    } else if (!reviewDraft) {
+      nameInput.current?.focus()
+    }
+  }, [editor, reviewDraft])
+
+  function select(entry: Team | 'new' | null, trigger?: HTMLButtonElement) {
+    if (trigger) editorTrigger.current = trigger
     setEditor(entry)
+    setReviewDraft(false)
     setSeries(entry && entry !== 'new' ? entry.series : [])
     setError('')
     setNotice('')
@@ -32,9 +46,13 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
       select(null)
       setError('Laget finns inte längre.')
       reloadList()
-    } else if (editor === 'new' && (status === undefined || status === 408 || status >= 500)) {
+    } else if (status === 409 && editing) {
       select(null)
-      setError('Det gick inte att bekräfta om laget skapades. Kontrollera listan innan du lägger till laget igen.')
+      setError('Laget har ändrats sedan du öppnade det. Dina ändringar sparades inte. Öppna laget igen för att redigera den senaste versionen.')
+      reloadList(editing.id)
+    } else if (editor === 'new' && (status === undefined || status === 408 || status >= 500)) {
+      setReviewDraft(true)
+      setError('Det gick inte att bekräfta om laget skapades. Kontrollera listan innan du fortsätter med utkastet.')
       reloadList()
     } else setError(status === 400 || status === 413
       ? 'Kontrollera lagnamn och serielänkar.'
@@ -43,7 +61,7 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (pending) return
+    if (pending || reviewDraft) return
     const fields = new FormData(event.currentTarget)
     const name = String(fields.get('name')).trim()
     setError('')
@@ -57,7 +75,7 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
       const saved = await saveTeam({
         name,
         series: series.map((entry) => ({ name: entry.name.trim(), url: entry.url.trim() })),
-      }, editing?.id)
+      }, editing)
       select(null)
       setNotice('Ändringen sparades.')
       reloadList(saved.id)
@@ -85,32 +103,39 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
     }
   }
 
-  if (entries === null) {
-    if (!loadFailed) return <p role="status" className="mt-6 text-sm">Hämtar lag…</p>
-    return (
+  const loadingView = entries === null && (
+    loadFailed ? (
       <div className="mt-6">
         {notice && <p role="status">{notice}</p>}
         {error && <p role="alert">{error}</p>}
         <p role="alert">Det gick inte att hämta listan.</p>
         <button type="button" className={actionClass + ' mt-4'} autoFocus={focusTarget !== null} onClick={() => reloadList(focusTarget ?? 'new')}>Försök igen</button>
       </div>
-    )
-  }
+    ) : <p role="status" className="mt-6 text-sm">Hämtar lag…</p>
+  )
+  if (entries === null && !reviewDraft) return loadingView
 
   return (
     <div className="min-w-0 max-w-full wrap-anywhere">
-      <fieldset className="min-w-0 border-0 p-0" disabled={pending}>
+      {loadingView}
+      <fieldset hidden={entries === null} className="min-w-0 border-0 p-0" disabled={pending}>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-          <p className="text-sm">{entries.length} lag</p>
-          <button type="button" className="admin-button mt-0! w-auto!" autoFocus={focusNew} disabled={editor !== null} onClick={() => select('new')}>+ Nytt lag</button>
+          <p className="text-sm">{entries?.length} lag</p>
+          <button type="button" className="admin-button mt-0! w-auto!" autoFocus={focusNew} disabled={editor !== null} onClick={(event) => select('new', event.currentTarget)}>+ Nytt lag</button>
         </div>
         {notice && <p role="status" className="admin-notice mt-5">{notice}</p>}
         {error && <p role="alert" className="admin-error mt-5">{error}</p>}
+        {reviewDraft && entries !== null && (
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button type="button" className={actionClass} autoFocus onClick={() => { setReviewDraft(false); setError('') }}>Fortsätt med utkastet</button>
+            <button type="button" className={actionClass} onClick={() => select(null)}>Stäng utkastet</button>
+          </div>
+        )}
 
         {editor !== null && (
-          <form className="admin-form min-w-0 rounded-lg border border-black/20 border-t-4 border-t-red bg-warm-white p-5 min-[40rem]:p-7" aria-labelledby="team-editor-heading" onSubmit={submit}>
+          <form hidden={reviewDraft} className="admin-form min-w-0 rounded-lg border border-black/20 border-t-4 border-t-red bg-warm-white p-5 min-[40rem]:p-7" aria-labelledby="team-editor-heading" onSubmit={submit}>
             <h3 id="team-editor-heading" className="mb-6 font-heading text-2xl">{editing ? `Redigera ${editing.name}` : 'Nytt lag'}</h3>
-            <label>Namn<input name="name" autoFocus required maxLength={150} defaultValue={editing?.name} /></label>
+            <label>Namn<input ref={nameInput} name="name" required maxLength={150} defaultValue={editing?.name} /></label>
             <fieldset className="grid min-w-0 gap-3 border-0 p-0">
               <legend>Serier</legend>
               {series.map((entry, index) => (
@@ -134,13 +159,13 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
           </form>
         )}
 
-        {entries.length === 0 ? <p className="mt-6 text-sm">Inga lag ännu.</p> : (
+        {entries?.length === 0 ? <p className="mt-6 text-sm">Inga lag ännu.</p> : (
           <ul className="mt-5 grid min-w-0 list-none gap-4 p-0" aria-label="Lag">
-            {entries.map((entry) => (
+            {entries?.map((entry) => (
               <li key={entry.id} className="min-w-0 rounded-lg border border-black/20 bg-[#fff] p-5">
                 <h3 className="font-heading text-2xl leading-tight">{entry.name}</h3>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <button type="button" className={actionClass} autoFocus={focusTarget === entry.id} disabled={editor !== null} onClick={() => select(entry)} aria-label={`Redigera ${entry.name}`}>Redigera</button>
+                  <button type="button" className={actionClass} autoFocus={focusTarget === entry.id} disabled={editor !== null} onClick={(event) => select(entry, event.currentTarget)} aria-label={`Redigera ${entry.name}`}>Redigera</button>
                   <button type="button" className={actionClass} disabled={editor !== null} aria-haspopup="dialog" onClick={() => setRemoving(entry)} aria-label={`Ta bort ${entry.name}`}>Ta bort</button>
                 </div>
               </li>
