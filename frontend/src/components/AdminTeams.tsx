@@ -9,7 +9,7 @@ import { newDraftId, useAdminList } from './useAdminList'
 const actionClass = 'min-h-11 cursor-pointer rounded border border-black/30 px-3 py-2 text-sm hover:enabled:bg-black/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-default disabled:opacity-50'
 
 function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
-  const { entries, loadFailed, reloadList, focusTarget, focusNew } = useAdminList(getTeams)
+  const { entries, loadFailed, reloadList, confirmCreation, focusTarget, focusNew } = useAdminList(getTeams)
   const [editor, setEditor] = useState<Team | string | null>(null)
   const editing = typeof editor === 'string' ? null : editor
   const [createdId, setCreatedId] = useState<number | null>(null)
@@ -81,11 +81,18 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
         name: name.trim(),
         series: series.map((entry) => ({ name: entry.name.trim(), url: entry.url.trim() })),
       }, editor)
-      if (saved.reviewExisting) {
+      if (typeof editor === 'string') {
         setCreatedId(saved.id)
         setReviewDraft(true)
-        setError('Laget skapades redan vid ett tidigare försök. Jämför den sparade posten med ditt ändrade utkast.')
-        reloadList(saved.id)
+        confirmCreation(saved.id, (found) => {
+          if (!found) return
+          if (saved.reviewExisting) {
+            setError('Laget skapades redan vid ett tidigare försök. Jämför den sparade posten med ditt ändrade utkast.')
+            return
+          }
+          select(null)
+          setNotice('Ändringen sparades.')
+        })
         return
       }
       select(null)
@@ -163,9 +170,17 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
             ) : <p>Inga serier.</p>}
           </section>
         )}
-        {reviewDraft && reviewId !== null && entries && !latest && <p>Laget finns inte längre. Du kan kopiera uppgifterna från utkastet.</p>}
+        {reviewDraft && reviewId !== null && entries && !latest && <p>Laget finns inte längre. Ditt utkast är kvar.</p>}
         {reviewDraft && entries !== null && (
           <div className="mt-4 flex flex-wrap gap-3">
+            {createdId !== null && !editing && !latest && (
+              <button type="button" className={actionClass} autoFocus onClick={() => {
+                setCreatedId(null)
+                setEditor(newDraftId())
+                setReviewDraft(false)
+                setError('')
+              }}>Fortsätt som nytt lag</button>
+            )}
             {(reviewId === null || latest) && <button type="button" className={actionClass} autoFocus onClick={resumeDraft}>Fortsätt med utkastet</button>}
             {reviewId === null && <button type="button" className={actionClass} onClick={() => select(null)}>Stäng utkastet</button>}
           </div>
