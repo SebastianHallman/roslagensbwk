@@ -1,10 +1,12 @@
+const sharp = require('sharp');
 const { pool } = require('../db');
 const { validId } = require('../utils');
 
 const maxImageBytes = 512 * 1024;
+const maxImagePixels = 16_000_000;
 const imagePattern = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
 
-function validImage(image) {
+async function validImage(image) {
     if (image === null || image === undefined) return true;
     if (typeof image !== 'string') return false;
     const match = imagePattern.exec(image);
@@ -12,10 +14,14 @@ function validImage(image) {
     const [, format, encoded] = match;
     const bytes = Buffer.from(encoded, 'base64');
     if (bytes.length > maxImageBytes) return false;
-    switch (format) {
-        case 'png': return bytes.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'));
-        case 'jpeg': return bytes.subarray(0, 3).equals(Buffer.from('ffd8ff', 'hex'));
-        case 'webp': return bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP';
+    try {
+        const decoder = sharp(bytes, { animated: true, failOn: 'warning', limitInputPixels: maxImagePixels });
+        const metadata = await decoder.metadata();
+        if (metadata.format !== format) return false;
+        await decoder.raw().toBuffer();
+        return true;
+    } catch {
+        return false;
     }
 }
 
@@ -38,7 +44,7 @@ async function save(req, res) {
     const { id } = req.params;
     if (id !== undefined && !validId(id)) return res.status(400).json({ error: 'Invalid ID' });
     const { name, image } = req.body ?? {};
-    if (typeof name !== 'string' || !name.trim() || name.trim().length > 150 || !validImage(image)) {
+    if (typeof name !== 'string' || !name.trim() || name.trim().length > 150 || !(await validImage(image))) {
         return res.status(400).json({ error: 'Invalid directory entry' });
     }
 

@@ -151,7 +151,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
                 </label>
               </>
             )}
-            <label>Logotyp (valfri, högst 512 kB)
+            <label>Logotyp (valfri, högst 512 kB och 16 megapixlar)
               <input type="file" name="image" accept="image/png,image/jpeg,image/webp" disabled={removeLogo} />
             </label>
             <div className="mt-4 flex flex-wrap gap-3">
