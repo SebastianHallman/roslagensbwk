@@ -19,8 +19,8 @@ export function saveTeam(team: TeamInput, original: Team | null) {
   })
 }
 
-export function deleteTeam(id: number) {
-  return requestJson(`${endpoint}/${id}`, { method: 'DELETE', credentials: 'include' })
+export function deleteTeam(team: Team) {
+  return requestJson(`${endpoint}/${team.id}?version=${encodeURIComponent(team.version)}`, { method: 'DELETE', credentials: 'include' })
 }
 
 type TeamList = { status: 'loading' | 'ready' | 'error'; teams: Team[] }

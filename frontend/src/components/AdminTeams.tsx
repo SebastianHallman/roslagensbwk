@@ -12,10 +12,12 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
   const { entries, loadFailed, reloadList, focusTarget, focusNew } = useAdminList(getTeams)
   const [editor, setEditor] = useState<Team | 'new' | null>(null)
   const editing = editor === 'new' ? null : editor
+  const [name, setName] = useState('')
   const [removing, setRemoving] = useState<Team | null>(null)
   const [series, setSeries] = useState<Series[]>([])
   const [pending, setPending] = useState(false)
   const [reviewDraft, setReviewDraft] = useState(false)
+  const latest = reviewDraft && editing ? entries?.find((entry) => entry.id === editing.id) : undefined
   const nameInput = useRef<HTMLInputElement>(null)
   const editorTrigger = useRef<HTMLButtonElement | null>(null)
   const [error, setError] = useState('')
@@ -33,6 +35,7 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
   function select(entry: Team | 'new' | null, trigger?: HTMLButtonElement) {
     if (trigger) editorTrigger.current = trigger
     setEditor(entry)
+    setName(entry && entry !== 'new' ? entry.name : '')
     setReviewDraft(false)
     setSeries(entry && entry !== 'new' ? entry.series : [])
     setError('')
@@ -43,12 +46,13 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
     const { status } = getApiErrorDetails(failure)
     if (status === 401 || status === 403) onSessionExpired()
     else if (status === 404) {
-      select(null)
+      if (editing) setReviewDraft(true)
+      else select(null)
       setError('Laget finns inte längre.')
       reloadList()
     } else if (status === 409 && editing) {
-      select(null)
-      setError('Laget har ändrats sedan du öppnade det. Dina ändringar sparades inte. Öppna laget igen för att redigera den senaste versionen.')
+      setReviewDraft(true)
+      setError('Laget har ändrats. Jämför ditt utkast med den sparade versionen innan du fortsätter.')
       reloadList(editing.id)
     } else if (editor === 'new' && (status === undefined || status === 408 || status >= 500)) {
       setReviewDraft(true)
@@ -62,18 +66,16 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (pending || reviewDraft) return
-    const fields = new FormData(event.currentTarget)
-    const name = String(fields.get('name')).trim()
     setError('')
     setNotice('')
-    if (!name || series.some((entry) => !entry.name.trim())) {
+    if (!name.trim() || series.some((entry) => !entry.name.trim())) {
       setError('Fyll i lagnamn och namn för varje serie.')
       return
     }
     setPending(true)
     try {
       const saved = await saveTeam({
-        name,
+        name: name.trim(),
         series: series.map((entry) => ({ name: entry.name.trim(), url: entry.url.trim() })),
       }, editing)
       select(null)
@@ -91,16 +93,31 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
     setError('')
     setNotice('')
     try {
-      await deleteTeam(entry.id)
+      await deleteTeam(entry)
       setRemoving(null)
       setNotice('Posten togs bort.')
       reloadList()
     } catch (failure) {
       setRemoving(null)
-      handleFailure(failure)
+      if (getApiErrorDetails(failure).status === 409) {
+        setError('Laget har ändrats och togs inte bort. Kontrollera uppgifterna innan du bekräftar en ny borttagning.')
+        reloadList(entry.id)
+      } else handleFailure(failure)
     } finally {
       setPending(false)
     }
+  }
+
+  function resumeDraft() {
+    if (editing && latest) {
+      if (name.trim() === editing.name) setName(latest.name)
+      const seriesUnchanged = series.length === editing.series.length && series.every((draft, i) =>
+        draft.name.trim() === editing.series[i].name && draft.url.trim() === editing.series[i].url)
+      if (seriesUnchanged) setSeries(latest.series)
+      setEditor(latest)
+    }
+    setReviewDraft(false)
+    setError('')
   }
 
   const loadingView = entries === null && (
@@ -125,17 +142,29 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
         </div>
         {notice && <p role="status" className="admin-notice mt-5">{notice}</p>}
         {error && <p role="alert" className="admin-error mt-5">{error}</p>}
+        {latest && (
+          <section className="mt-4" aria-label="Sparad version">
+            <h3 className="font-heading text-xl">Sparad version</h3>
+            <p>{latest.name}</p>
+            {latest.series.length ? (
+              <ul className="list-disc ps-5">
+                {latest.series.map((entry, i) => <li key={i}>{entry.name}{entry.url && ` – ${entry.url}`}</li>)}
+              </ul>
+            ) : <p>Inga serier.</p>}
+          </section>
+        )}
+        {reviewDraft && editing && entries && !latest && <p>Laget finns inte längre. Du kan kopiera uppgifterna från utkastet.</p>}
         {reviewDraft && entries !== null && (
           <div className="mt-4 flex flex-wrap gap-3">
-            <button type="button" className={actionClass} autoFocus onClick={() => { setReviewDraft(false); setError('') }}>Fortsätt med utkastet</button>
-            <button type="button" className={actionClass} onClick={() => select(null)}>Stäng utkastet</button>
+            {(!editing || latest) && <button type="button" className={actionClass} autoFocus onClick={resumeDraft}>Fortsätt med utkastet</button>}
+            {!editing && <button type="button" className={actionClass} onClick={() => select(null)}>Stäng utkastet</button>}
           </div>
         )}
 
         {editor !== null && (
-          <form hidden={reviewDraft} className="admin-form min-w-0 rounded-lg border border-black/20 border-t-4 border-t-red bg-warm-white p-5 min-[40rem]:p-7" aria-labelledby="team-editor-heading" onSubmit={submit}>
-            <h3 id="team-editor-heading" className="mb-6 font-heading text-2xl">{editing ? `Redigera ${editing.name}` : 'Nytt lag'}</h3>
-            <label>Namn<input ref={nameInput} name="name" required maxLength={150} defaultValue={editing?.name} /></label>
+          <form hidden={reviewDraft && !editing} className="admin-form min-w-0 rounded-lg border border-black/20 border-t-4 border-t-red bg-warm-white p-5 min-[40rem]:p-7" aria-labelledby="team-editor-heading" onSubmit={submit}>
+            <h3 id="team-editor-heading" className="mb-6 font-heading text-2xl">{reviewDraft ? 'Ditt utkast' : editing ? `Redigera ${editing.name}` : 'Nytt lag'}</h3>
+            <label>Namn<input ref={nameInput} name="name" required maxLength={150} value={name} onChange={(event) => setName(event.target.value)} /></label>
             <fieldset className="grid min-w-0 gap-3 border-0 p-0">
               <legend>Serier</legend>
               {series.map((entry, index) => (
@@ -153,7 +182,7 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
               <button type="button" className={actionClass + ' w-fit'} disabled={series.length >= 20} onClick={() => setSeries([...series, { name: '', url: '' }])}>Lägg till serie</button>
             </fieldset>
             <div className="mt-4 flex flex-wrap gap-3">
-              <button className="admin-button mt-0! w-auto!" type="submit">{pending ? 'Sparar…' : 'Spara'}</button>
+              <button className="admin-button mt-0! w-auto!" type="submit" disabled={reviewDraft}>{pending ? 'Sparar…' : 'Spara'}</button>
               <button type="button" className={actionClass} onClick={() => select(null)}>Avbryt</button>
             </div>
           </form>

@@ -23,10 +23,12 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
   const { entries, loadFailed, reloadList, focusTarget, focusNew } = useAdminList(getSponsors)
   const [editor, setEditor] = useState<Sponsor | 'new' | null>(null)
   const editing = editor === 'new' ? null : editor
+  const [name, setName] = useState('')
   const [removeLogo, setRemoveLogo] = useState(false)
   const [removing, setRemoving] = useState<Sponsor | null>(null)
   const [pending, setPending] = useState(false)
   const [reviewDraft, setReviewDraft] = useState(false)
+  const latest = reviewDraft && editing ? entries?.find((entry) => entry.id === editing.id) : undefined
   const nameInput = useRef<HTMLInputElement>(null)
   const editorTrigger = useRef<HTMLButtonElement | null>(null)
   const [error, setError] = useState('')
@@ -44,6 +46,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
   function select(entry: Sponsor | 'new' | null, trigger?: HTMLButtonElement) {
     if (trigger) editorTrigger.current = trigger
     setEditor(entry)
+    setName(entry && entry !== 'new' ? entry.name : '')
     setReviewDraft(false)
     setRemoveLogo(false)
     setError('')
@@ -54,9 +57,14 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
     const { status } = getApiErrorDetails(failure)
     if (status === 401 || status === 403) onSessionExpired()
     else if (status === 404) {
-      select(null)
+      if (editing) setReviewDraft(true)
+      else select(null)
       setError('Sponsorn finns inte längre.')
       reloadList()
+    } else if (status === 409 && editing) {
+      setReviewDraft(true)
+      setError('Sponsorn har ändrats. Jämför ditt utkast med den sparade versionen innan du fortsätter.')
+      reloadList(editing.id)
     } else if (editor === 'new' && (status === undefined || status === 408 || status >= 500)) {
       setReviewDraft(true)
       setError('Det gick inte att bekräfta om sponsorn skapades. Kontrollera listan innan du fortsätter med utkastet.')
@@ -70,10 +78,9 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
     event.preventDefault()
     if (pending || reviewDraft) return
     const fields = new FormData(event.currentTarget)
-    const name = String(fields.get('name')).trim()
     setError('')
     setNotice('')
-    if (!name) {
+    if (!name.trim()) {
       setError('Fyll i sponsorns namn.')
       return
     }
@@ -95,7 +102,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
           return
         }
       }
-      const saved = await saveSponsor({ name, image }, editing?.id)
+      const saved = await saveSponsor({ name: name.trim(), image }, editing)
       select(null)
       setNotice('Ändringen sparades.')
       reloadList(saved.id)
@@ -123,6 +130,15 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
     }
   }
 
+  function resumeDraft() {
+    if (editing && latest) {
+      if (name.trim() === editing.name) setName(latest.name)
+      setEditor(latest)
+    }
+    setReviewDraft(false)
+    setError('')
+  }
+
   const loadingView = entries === null && (
     loadFailed ? (
       <div className="mt-6">
@@ -145,17 +161,25 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
         </div>
         {notice && <p role="status" className="admin-notice mt-5">{notice}</p>}
         {error && <p role="alert" className="admin-error mt-5">{error}</p>}
+        {latest && (
+          <section className="mt-4" aria-label="Sparad version">
+            <h3 className="font-heading text-xl">Sparad version</h3>
+            <p>{latest.name}</p>
+            {latest.image ? <img src={latest.image} alt={`Sparad logotyp för ${latest.name}`} className="h-20 w-auto" /> : <p>Ingen logotyp.</p>}
+          </section>
+        )}
+        {reviewDraft && editing && entries && !latest && <p>Sponsorn finns inte längre. Du kan kopiera uppgifterna från utkastet.</p>}
         {reviewDraft && entries !== null && (
           <div className="mt-4 flex flex-wrap gap-3">
-            <button type="button" className={actionClass} autoFocus onClick={() => { setReviewDraft(false); setError('') }}>Fortsätt med utkastet</button>
-            <button type="button" className={actionClass} onClick={() => select(null)}>Stäng utkastet</button>
+            {(!editing || latest) && <button type="button" className={actionClass} autoFocus onClick={resumeDraft}>Fortsätt med utkastet</button>}
+            {!editing && <button type="button" className={actionClass} onClick={() => select(null)}>Stäng utkastet</button>}
           </div>
         )}
 
         {editor !== null && (
-          <form hidden={reviewDraft} className="admin-form min-w-0 rounded-lg border border-black/20 border-t-4 border-t-red bg-warm-white p-5 min-[40rem]:p-7" aria-labelledby="sponsor-editor-heading" onSubmit={submit}>
-            <h3 id="sponsor-editor-heading" className="mb-6 font-heading text-2xl">{editing ? `Redigera ${editing.name}` : 'Ny sponsor'}</h3>
-            <label>Namn<input ref={nameInput} name="name" required maxLength={150} defaultValue={editing?.name} /></label>
+          <form hidden={reviewDraft && !editing} className="admin-form min-w-0 rounded-lg border border-black/20 border-t-4 border-t-red bg-warm-white p-5 min-[40rem]:p-7" aria-labelledby="sponsor-editor-heading" onSubmit={submit}>
+            <h3 id="sponsor-editor-heading" className="mb-6 font-heading text-2xl">{reviewDraft ? 'Ditt utkast' : editing ? `Redigera ${editing.name}` : 'Ny sponsor'}</h3>
+            <label>Namn<input ref={nameInput} name="name" required maxLength={150} value={name} onChange={(event) => setName(event.target.value)} /></label>
             {editing?.image && (
               <>
                 <img src={editing.image} alt={`Nuvarande bild för ${editing.name}`} className="mb-3 h-20 w-auto max-w-full object-contain" />
@@ -169,7 +193,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
               <input type="file" name="image" accept="image/png,image/jpeg,image/webp" disabled={removeLogo} />
             </label>
             <div className="mt-4 flex flex-wrap gap-3">
-              <button className="admin-button mt-0! w-auto!" type="submit">{pending ? 'Sparar…' : 'Spara'}</button>
+              <button className="admin-button mt-0! w-auto!" type="submit" disabled={reviewDraft}>{pending ? 'Sparar…' : 'Spara'}</button>
               <button type="button" className={actionClass} onClick={() => select(null)}>Avbryt</button>
             </div>
           </form>

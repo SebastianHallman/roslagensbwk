@@ -2,24 +2,25 @@ import { useEffect, useState } from 'react'
 import { requestJson } from './requestJson.js'
 
 type SponsorInput = { name: string; image?: string | null }
-export type Sponsor = { id: number; name: string; image: string | null }
+export type Sponsor = { id: number; name: string; image: string | null; version: string }
 
 const endpoint = `${import.meta.env.VITE_API_URL}/sponsors`
 
 export async function getSponsors(signal?: AbortSignal): Promise<Sponsor[]> {
-  const rows: { id: number; name: string; hasImage: number }[] = await requestJson(endpoint, { signal })
-  return rows.map(({ id, name, hasImage }) => ({
+  const rows: { id: number; name: string; hasImage: number; version: string }[] = await requestJson(endpoint, { signal })
+  return rows.map(({ id, name, hasImage, version }) => ({
     id,
     name,
-    image: hasImage ? `${endpoint}/${id}/image` : null,
+    version,
+    image: hasImage ? `${endpoint}/${id}/image?v=${version}` : null,
   }))
 }
 
-export function saveSponsor(sponsor: SponsorInput, id?: number) {
-  return requestJson(id === undefined ? endpoint : `${endpoint}/${id}`, {
-    method: id === undefined ? 'POST' : 'PUT',
+export function saveSponsor(sponsor: SponsorInput, original: Sponsor | null) {
+  return requestJson(original ? `${endpoint}/${original.id}` : endpoint, {
+    method: original ? 'PUT' : 'POST',
     credentials: 'include',
-    data: sponsor,
+    data: original ? { ...sponsor, version: original.version } : sponsor,
   })
 }
 

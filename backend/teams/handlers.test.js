@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { pool } = require('../db');
-const { list, save } = require('./handlers');
+const { list, save, remove } = require('./handlers');
 
 test('stores absolute results links when creating and updating a team', async (t) => {
     const execute = t.mock.method(pool, 'execute', async () => [{ insertId: 1, affectedRows: 1 }]);
@@ -58,6 +58,25 @@ test('returns absolute links for previously stored series in either MySQL JSON f
             'https://example.org/results', 'https://example.org/results',
         ]);
     } });
+});
+
+test('requires the confirmed team version for deletion', async (t) => {
+    const version = 'b'.repeat(64);
+    const execute = t.mock.method(pool, 'execute', async (sql, values) => {
+        if (sql.startsWith('DELETE')) {
+            assert.match(sql, /WHERE id = \? AND SHA2\(JSON_ARRAY\(name, series\), 256\) = \?/);
+            assert.deepEqual(values, ['2', version]);
+            return [{ affectedRows: 0 }];
+        }
+        return [[{ id: 2 }]];
+    });
+    const res = { status(code) { this.statusCode = code; return this; }, json() {} };
+    await remove({ params: { id: '2' }, query: {} }, res);
+    assert.equal(res.statusCode, 409);
+    assert.equal(execute.mock.callCount(), 0);
+    await remove({ params: { id: '2' }, query: { version } }, res);
+    assert.equal(res.statusCode, 409);
+    assert.equal(execute.mock.callCount(), 2);
 });
 
 test('rejects relative and non-HTTP results links before writing', async (t) => {

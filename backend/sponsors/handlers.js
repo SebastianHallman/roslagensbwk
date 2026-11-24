@@ -1,6 +1,7 @@
 const sharp = require('sharp');
 const { pool } = require('../db');
 const { validId } = require('../utils');
+const sponsorVersion = 'SHA2(JSON_ARRAY(name, SHA2(image, 256)), 256)';
 
 const maxImageBytes = 512 * 1024;
 const maxImagePixels = 16_000_000;
@@ -26,7 +27,7 @@ async function validImage(image) {
 }
 
 async function list(req, res) {
-    const [rows] = await pool.execute('SELECT id, name, image IS NOT NULL AS hasImage FROM sponsors ORDER BY id');
+    const [rows] = await pool.execute(`SELECT id, name, image IS NOT NULL AS hasImage, ${sponsorVersion} AS version FROM sponsors ORDER BY id`);
     res.json(rows);
 }
 
@@ -53,10 +54,19 @@ async function save(req, res) {
         return res.status(201).json({ id: result.insertId });
     }
 
+    const { version } = req.body;
+    if (typeof version !== 'string' || !/^[0-9a-f]{64}$/.test(version)) {
+        return res.status(409).json({ error: 'Reload the sponsor before editing' });
+    }
+    const condition = `WHERE id = ? AND ${sponsorVersion} = ?`;
     const [result] = image === undefined
-        ? await pool.execute('UPDATE sponsors SET name = ? WHERE id = ?', [name.trim(), id])
-        : await pool.execute('UPDATE sponsors SET name = ?, image = ? WHERE id = ?', [name.trim(), image, id]);
-    if (!result.affectedRows) return res.status(404).json({ error: 'Entry not found' });
+        ? await pool.execute(`UPDATE sponsors SET name = ? ${condition}`, [name.trim(), id, version])
+        : await pool.execute(`UPDATE sponsors SET name = ?, image = ? ${condition}`, [name.trim(), image, id, version]);
+    if (!result.affectedRows) {
+        const [rows] = await pool.execute('SELECT id FROM sponsors WHERE id = ?', [id]);
+        if (!rows.length) return res.status(404).json({ error: 'Entry not found' });
+        return res.status(409).json({ error: 'Sponsor has changed' });
+    }
     res.json({ id: Number(id) });
 }
 

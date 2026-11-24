@@ -14,7 +14,7 @@ async function updateSponsor(image) {
         status(code) { this.statusCode = code; return this; },
         json() {},
     };
-    await save({ params: { id: '2' }, body: { name: 'Sponsor', image } }, res);
+    await save({ params: { id: '2' }, body: { name: 'Sponsor', image, version: 'a'.repeat(64) } }, res);
     return res.statusCode;
 }
 
@@ -25,7 +25,7 @@ for (const format of ['png', 'jpeg', 'webp']) {
             .toFormat(format).toBuffer();
         const image = dataUrl(format, bytes);
         assert.equal(await updateSponsor(image), 200);
-        assert.deepEqual(execute.mock.calls[0].arguments[1], ['Sponsor', image, '2']);
+        assert.deepEqual(execute.mock.calls[0].arguments[1], ['Sponsor', image, '2', 'a'.repeat(64)]);
 
         const signatureLength = { png: 8, jpeg: 3, webp: 12 }[format];
         assert.equal(await updateSponsor(dataUrl(format, bytes.subarray(0, signatureLength))), 400);
@@ -42,4 +42,18 @@ test('rejects a JPEG with readable metadata but incomplete pixel data', async (t
     const incomplete = bytes.subarray(0, -12);
     assert.equal((await sharp(incomplete).metadata()).format, 'jpeg');
     assert.equal(await updateSponsor(dataUrl('jpeg', incomplete)), 400);
+});
+
+test('guards both sponsor update paths with the name and image revision', async (t) => {
+    const execute = t.mock.method(pool, 'execute', async (sql, values) => {
+        if (sql.startsWith('UPDATE')) {
+            assert.match(sql, /WHERE id = \? AND SHA2\(JSON_ARRAY\(name, SHA2\(image, 256\)\), 256\) = \?/);
+            assert.deepEqual(values.slice(-2), ['2', 'a'.repeat(64)]);
+            return [{ affectedRows: 0 }];
+        }
+        return [[{ id: 2 }]];
+    });
+    assert.equal(await updateSponsor(undefined), 409);
+    assert.equal(await updateSponsor(null), 409);
+    assert.equal(execute.mock.callCount(), 4);
 });
