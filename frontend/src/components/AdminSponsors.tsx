@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { deleteSponsor, getSponsors, saveSponsor } from '../api/sponsors'
 import type { Sponsor } from '../api/sponsors'
 import { getApiErrorDetails } from '../api/errors'
 import ConfirmDialog from './ConfirmDialog'
+import { useAdminList } from './useAdminList'
 
 const maxImageBytes = 512 * 1024
 
@@ -19,7 +20,7 @@ function readImage(file: File): Promise<string> {
 const actionClass = 'min-h-11 cursor-pointer rounded border border-black/30 px-3 py-2 text-sm hover:enabled:bg-black/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-default disabled:opacity-50'
 
 function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
-  const [entries, setEntries] = useState<Sponsor[] | null>(null)
+  const { entries, loadFailed, reloadList, focusTarget, focusNew } = useAdminList(getSponsors)
   const [editor, setEditor] = useState<Sponsor | 'new' | null>(null)
   const editing = editor === 'new' ? null : editor
   const [removeLogo, setRemoveLogo] = useState(false)
@@ -27,24 +28,6 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [loadVersion, setLoadVersion] = useState(0)
-  const [loadFailed, setLoadFailed] = useState(false)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    getSponsors(controller.signal)
-      .then((rows) => { if (!controller.signal.aborted) setEntries(rows) })
-      .catch(() => {
-        if (!controller.signal.aborted) setLoadFailed(true)
-      })
-    return () => controller.abort()
-  }, [loadVersion])
-
-  function reloadList() {
-    setEntries(null)
-    setLoadFailed(false)
-    setLoadVersion((value) => value + 1)
-  }
 
   function select(entry: Sponsor | 'new' | null) {
     setEditor(entry)
@@ -60,6 +43,10 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
       select(null)
       setError('Sponsorn finns inte längre.')
       reloadList()
+    } else if (editor === 'new' && (status === undefined || status === 408 || status >= 500)) {
+      select(null)
+      setError('Det gick inte att bekräfta om sponsorn skapades. Kontrollera listan innan du lägger till sponsorn igen.')
+      reloadList()
     } else setError(status === 400 || status === 413
       ? 'Kontrollera sponsorns namn och logotyp.'
       : 'Ändringen kunde inte sparas. Försök igen.')
@@ -67,6 +54,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (pending) return
     const fields = new FormData(event.currentTarget)
     const name = String(fields.get('name')).trim()
     setError('')
@@ -86,12 +74,17 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
           setError('Välj en PNG-, JPG- eller WebP-bild på högst 512 kB.')
           return
         }
-        image = await readImage(file)
+        try {
+          image = await readImage(file)
+        } catch {
+          setError('Det gick inte att läsa logotypen. Välj filen igen.')
+          return
+        }
       }
-      await saveSponsor({ name, image }, editing?.id)
+      const saved = await saveSponsor({ name, image }, editing?.id)
       select(null)
       setNotice('Ändringen sparades.')
-      reloadList()
+      reloadList(saved.id)
     } catch (failure) {
       handleFailure(failure)
     } finally {
@@ -123,7 +116,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
         {notice && <p role="status">{notice}</p>}
         {error && <p role="alert">{error}</p>}
         <p role="alert">Det gick inte att hämta listan.</p>
-        <button type="button" className={actionClass + ' mt-4'} onClick={reloadList}>Försök igen</button>
+        <button type="button" className={actionClass + ' mt-4'} autoFocus={focusTarget !== null} onClick={() => reloadList(focusTarget ?? 'new')}>Försök igen</button>
       </div>
     )
   }
@@ -133,7 +126,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
       <fieldset className="min-w-0 border-0 p-0" disabled={pending}>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm">{entries.length} {entries.length === 1 ? 'sponsor' : 'sponsorer'}</p>
-          <button type="button" className="admin-button mt-0! w-auto!" disabled={editor !== null} onClick={() => select('new')}>+ Ny sponsor</button>
+          <button type="button" className="admin-button mt-0! w-auto!" autoFocus={focusNew} disabled={editor !== null} onClick={() => select('new')}>+ Ny sponsor</button>
         </div>
         {notice && <p role="status" className="admin-notice mt-5">{notice}</p>}
         {error && <p role="alert" className="admin-error mt-5">{error}</p>}
@@ -167,7 +160,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
               <li key={entry.id} className="min-w-0 rounded-lg border border-black/20 bg-[#fff] p-5">
                 <h3 className="font-heading text-2xl leading-tight">{entry.name}</h3>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <button type="button" className={actionClass} disabled={editor !== null} onClick={() => select(entry)} aria-label={`Redigera ${entry.name}`}>Redigera</button>
+                  <button type="button" className={actionClass} autoFocus={focusTarget === entry.id} disabled={editor !== null} onClick={() => select(entry)} aria-label={`Redigera ${entry.name}`}>Redigera</button>
                   <button type="button" className={actionClass} disabled={editor !== null} aria-haspopup="dialog" onClick={() => setRemoving(entry)} aria-label={`Ta bort ${entry.name}`}>Ta bort</button>
                 </div>
               </li>

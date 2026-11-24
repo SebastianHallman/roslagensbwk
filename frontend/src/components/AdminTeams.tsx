@@ -1,14 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { deleteTeam, getTeams, saveTeam } from '../api/teams'
 import type { Team, Series } from '../api/teams'
 import { getApiErrorDetails } from '../api/errors'
 import ConfirmDialog from './ConfirmDialog'
+import { useAdminList } from './useAdminList'
 
 const actionClass = 'min-h-11 cursor-pointer rounded border border-black/30 px-3 py-2 text-sm hover:enabled:bg-black/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-default disabled:opacity-50'
 
 function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
-  const [entries, setEntries] = useState<Team[] | null>(null)
+  const { entries, loadFailed, reloadList, focusTarget, focusNew } = useAdminList(getTeams)
   const [editor, setEditor] = useState<Team | 'new' | null>(null)
   const editing = editor === 'new' ? null : editor
   const [removing, setRemoving] = useState<Team | null>(null)
@@ -16,24 +17,6 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [loadVersion, setLoadVersion] = useState(0)
-  const [loadFailed, setLoadFailed] = useState(false)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    getTeams(controller.signal)
-      .then((rows) => { if (!controller.signal.aborted) setEntries(rows) })
-      .catch(() => {
-        if (!controller.signal.aborted) setLoadFailed(true)
-      })
-    return () => controller.abort()
-  }, [loadVersion])
-
-  function reloadList() {
-    setEntries(null)
-    setLoadFailed(false)
-    setLoadVersion((value) => value + 1)
-  }
 
   function select(entry: Team | 'new' | null) {
     setEditor(entry)
@@ -49,6 +32,10 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
       select(null)
       setError('Laget finns inte längre.')
       reloadList()
+    } else if (editor === 'new' && (status === undefined || status === 408 || status >= 500)) {
+      select(null)
+      setError('Det gick inte att bekräfta om laget skapades. Kontrollera listan innan du lägger till laget igen.')
+      reloadList()
     } else setError(status === 400 || status === 413
       ? 'Kontrollera lagnamn och serielänkar.'
       : 'Ändringen kunde inte sparas. Försök igen.')
@@ -56,6 +43,7 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (pending) return
     const fields = new FormData(event.currentTarget)
     const name = String(fields.get('name')).trim()
     setError('')
@@ -66,13 +54,13 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
     }
     setPending(true)
     try {
-      await saveTeam({
+      const saved = await saveTeam({
         name,
         series: series.map((entry) => ({ name: entry.name.trim(), url: entry.url.trim() })),
       }, editing?.id)
       select(null)
       setNotice('Ändringen sparades.')
-      reloadList()
+      reloadList(saved.id)
     } catch (failure) {
       handleFailure(failure)
     } finally {
@@ -104,7 +92,7 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
         {notice && <p role="status">{notice}</p>}
         {error && <p role="alert">{error}</p>}
         <p role="alert">Det gick inte att hämta listan.</p>
-        <button type="button" className={actionClass + ' mt-4'} onClick={reloadList}>Försök igen</button>
+        <button type="button" className={actionClass + ' mt-4'} autoFocus={focusTarget !== null} onClick={() => reloadList(focusTarget ?? 'new')}>Försök igen</button>
       </div>
     )
   }
@@ -114,7 +102,7 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
       <fieldset className="min-w-0 border-0 p-0" disabled={pending}>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm">{entries.length} lag</p>
-          <button type="button" className="admin-button mt-0! w-auto!" disabled={editor !== null} onClick={() => select('new')}>+ Nytt lag</button>
+          <button type="button" className="admin-button mt-0! w-auto!" autoFocus={focusNew} disabled={editor !== null} onClick={() => select('new')}>+ Nytt lag</button>
         </div>
         {notice && <p role="status" className="admin-notice mt-5">{notice}</p>}
         {error && <p role="alert" className="admin-error mt-5">{error}</p>}
@@ -152,7 +140,7 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
               <li key={entry.id} className="min-w-0 rounded-lg border border-black/20 bg-[#fff] p-5">
                 <h3 className="font-heading text-2xl leading-tight">{entry.name}</h3>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <button type="button" className={actionClass} disabled={editor !== null} onClick={() => select(entry)} aria-label={`Redigera ${entry.name}`}>Redigera</button>
+                  <button type="button" className={actionClass} autoFocus={focusTarget === entry.id} disabled={editor !== null} onClick={() => select(entry)} aria-label={`Redigera ${entry.name}`}>Redigera</button>
                   <button type="button" className={actionClass} disabled={editor !== null} aria-haspopup="dialog" onClick={() => setRemoving(entry)} aria-label={`Ta bort ${entry.name}`}>Ta bort</button>
                 </div>
               </li>

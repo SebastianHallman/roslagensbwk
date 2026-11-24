@@ -42,7 +42,7 @@ function ClubIntroduction() {
           <ul hidden={teams.length === 0} className="grid list-none gap-6 p-0 min-[30rem]:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
             {teams.map((team) => (
               <li key={team.id} className="min-w-0 rounded-lg bg-white p-6">
-                <h3 className="mb-2 font-heading text-xl leading-tight">{team.name}</h3>
+                <h3 className="mb-2 wrap-anywhere font-heading text-xl leading-tight">{team.name}</h3>
                 {(team.series?.length ?? 0) > 0 ? (
                   <ul className="grid list-none gap-3 p-0 text-sm">
                     {team.series?.map((series, index) => (
