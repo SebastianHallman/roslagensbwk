@@ -1,10 +1,7 @@
-import teamData from '../data/teamData.js'
 import { useTeams } from '../api/teams'
 
-const fallback = teamData.map((team) => ({ ...team, id: Number(team.id) }))
-
 function ClubIntroduction() {
-  const teams = useTeams(fallback)
+  const { status, teams } = useTeams()
   return (
     <div className="bg-black md:bg-[linear-gradient(to_right,var(--color-black)_50%,var(--color-warm-white)_50%)]">
       <div className="mx-auto grid md:w-[calc(100%_-_3rem)] md:max-w-[76rem] md:grid-cols-2">
@@ -37,8 +34,12 @@ function ClubIntroduction() {
           <h2 id="teams-heading" className="mb-10 text-center text-3xl leading-tight lg:text-4xl">
             Våra lag
           </h2>
-          <ul className="grid list-none gap-6 p-0 min-[30rem]:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
-            {teams.length === 0 && <li>Inga lag visas just nu.</li>}
+          <div role="status">
+            {status === 'loading' && 'Hämtar lag…'}
+            {status === 'error' && 'Det gick inte att hämta lagen.'}
+            {status === 'ready' && teams.length === 0 && 'Inga lag visas just nu.'}
+          </div>
+          <ul hidden={teams.length === 0} className="grid list-none gap-6 p-0 min-[30rem]:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
             {teams.map((team) => (
               <li key={team.id} className="min-w-0 rounded-lg bg-white p-6">
                 <h3 className="mb-2 font-heading text-xl leading-tight">{team.name}</h3>

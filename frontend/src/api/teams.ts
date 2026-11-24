@@ -24,16 +24,22 @@ export function deleteTeam(id: number) {
   return requestJson(`${endpoint}/${id}`, { method: 'DELETE', credentials: 'include' })
 }
 
-export function useTeams(fallback: Team[]) {
-  const [teams, setTeams] = useState(fallback)
+type TeamList = { status: 'loading' | 'ready' | 'error'; teams: Team[] }
+
+export function useTeams() {
+  const [list, setList] = useState<TeamList>({ status: 'loading', teams: [] })
 
   useEffect(() => {
     const controller = new AbortController()
     getTeams(controller.signal)
-      .then((rows) => { if (!controller.signal.aborted) setTeams(rows) })
-      .catch(() => { if (!controller.signal.aborted) setTeams(fallback) })
+      .then((teams) => {
+        if (!controller.signal.aborted) setList({ status: 'ready', teams })
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setList({ status: 'error', teams: [] })
+      })
     return () => controller.abort()
-  }, [fallback])
+  }, [])
 
-  return teams
+  return list
 }

@@ -17,16 +17,23 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [loadVersion, setLoadVersion] = useState(0)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
     getTeams(controller.signal)
       .then((rows) => { if (!controller.signal.aborted) setEntries(rows) })
       .catch(() => {
-        if (!controller.signal.aborted) setError('Det gick inte att hämta listan.')
+        if (!controller.signal.aborted) setLoadFailed(true)
       })
     return () => controller.abort()
   }, [loadVersion])
+
+  function reloadList() {
+    setEntries(null)
+    setLoadFailed(false)
+    setLoadVersion((value) => value + 1)
+  }
 
   function select(entry: Team | 'new' | null) {
     setEditor(entry)
@@ -41,7 +48,7 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
     else if (status === 404) {
       select(null)
       setError('Laget finns inte längre.')
-      setLoadVersion((value) => value + 1)
+      reloadList()
     } else setError(status === 400 || status === 413
       ? 'Kontrollera lagnamn och serielänkar.'
       : 'Ändringen kunde inte sparas. Försök igen.')
@@ -65,7 +72,7 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
       }, editing?.id)
       select(null)
       setNotice('Ändringen sparades.')
-      setLoadVersion((value) => value + 1)
+      reloadList()
     } catch (failure) {
       handleFailure(failure)
     } finally {
@@ -81,7 +88,7 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
       await deleteTeam(entry.id)
       setRemoving(null)
       setNotice('Posten togs bort.')
-      setLoadVersion((value) => value + 1)
+      reloadList()
     } catch (failure) {
       setRemoving(null)
       handleFailure(failure)
@@ -91,11 +98,13 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
   }
 
   if (entries === null) {
-    if (!error) return <p role="status" className="mt-6 text-sm">Hämtar lag…</p>
+    if (!loadFailed) return <p role="status" className="mt-6 text-sm">Hämtar lag…</p>
     return (
       <div className="mt-6">
-        <p role="alert">{error}</p>
-        <button type="button" className={actionClass + ' mt-4'} onClick={() => { setError(''); setLoadVersion((value) => value + 1) }}>Försök igen</button>
+        {notice && <p role="status">{notice}</p>}
+        {error && <p role="alert">{error}</p>}
+        <p role="alert">Det gick inte att hämta listan.</p>
+        <button type="button" className={actionClass + ' mt-4'} onClick={reloadList}>Försök igen</button>
       </div>
     )
   }
@@ -122,7 +131,7 @@ function AdminTeams({ onSessionExpired }: { onSessionExpired: () => void }) {
                   <label>Serienamn<input required maxLength={150} value={entry.name} onChange={(event) => {
                     setSeries(series.map((item, position) => position === index ? { ...item, name: event.target.value } : item))
                   }} /></label>
-                  <label>Resultatlänk (valfri)<input type="url" maxLength={2048} value={entry.url} onChange={(event) => {
+                  <label>Resultatlänk (valfri)<input type="text" inputMode="url" placeholder="exempel.se/resultat" maxLength={2048} value={entry.url} onChange={(event) => {
                     setSeries(series.map((item, position) => position === index ? { ...item, url: event.target.value } : item))
                   }} /></label>
                   <button type="button" className={actionClass + ' w-fit'} onClick={() => setSeries(series.filter((_, position) => position !== index))}>Ta bort serie {index + 1}</button>

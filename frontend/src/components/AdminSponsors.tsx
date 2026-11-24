@@ -22,24 +22,33 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
   const [entries, setEntries] = useState<Sponsor[] | null>(null)
   const [editor, setEditor] = useState<Sponsor | 'new' | null>(null)
   const editing = editor === 'new' ? null : editor
+  const [removeLogo, setRemoveLogo] = useState(false)
   const [removing, setRemoving] = useState<Sponsor | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [loadVersion, setLoadVersion] = useState(0)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
     getSponsors(controller.signal)
       .then((rows) => { if (!controller.signal.aborted) setEntries(rows) })
       .catch(() => {
-        if (!controller.signal.aborted) setError('Det gick inte att hämta listan.')
+        if (!controller.signal.aborted) setLoadFailed(true)
       })
     return () => controller.abort()
   }, [loadVersion])
 
+  function reloadList() {
+    setEntries(null)
+    setLoadFailed(false)
+    setLoadVersion((value) => value + 1)
+  }
+
   function select(entry: Sponsor | 'new' | null) {
     setEditor(entry)
+    setRemoveLogo(false)
     setError('')
     setNotice('')
   }
@@ -50,7 +59,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
     else if (status === 404) {
       select(null)
       setError('Sponsorn finns inte längre.')
-      setLoadVersion((value) => value + 1)
+      reloadList()
     } else setError(status === 400 || status === 413
       ? 'Kontrollera sponsorns namn och logotyp.'
       : 'Ändringen kunde inte sparas. Försök igen.')
@@ -69,8 +78,10 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
     setPending(true)
     try {
       const file = fields.get('image')
-      let image: string | undefined
-      if (file instanceof File && file.name) {
+      let image: string | null | undefined
+      if (removeLogo) {
+        image = null
+      } else if (file instanceof File && file.name) {
         if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > maxImageBytes) {
           setError('Välj en PNG-, JPG- eller WebP-bild på högst 512 kB.')
           return
@@ -80,7 +91,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
       await saveSponsor({ name, image }, editing?.id)
       select(null)
       setNotice('Ändringen sparades.')
-      setLoadVersion((value) => value + 1)
+      reloadList()
     } catch (failure) {
       handleFailure(failure)
     } finally {
@@ -96,7 +107,7 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
       await deleteSponsor(entry.id)
       setRemoving(null)
       setNotice('Posten togs bort.')
-      setLoadVersion((value) => value + 1)
+      reloadList()
     } catch (failure) {
       setRemoving(null)
       handleFailure(failure)
@@ -106,11 +117,13 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
   }
 
   if (entries === null) {
-    if (!error) return <p role="status" className="mt-6 text-sm">Hämtar sponsorer…</p>
+    if (!loadFailed) return <p role="status" className="mt-6 text-sm">Hämtar sponsorer…</p>
     return (
       <div className="mt-6">
-        <p role="alert">{error}</p>
-        <button type="button" className={actionClass + ' mt-4'} onClick={() => { setError(''); setLoadVersion((value) => value + 1) }}>Försök igen</button>
+        {notice && <p role="status">{notice}</p>}
+        {error && <p role="alert">{error}</p>}
+        <p role="alert">Det gick inte att hämta listan.</p>
+        <button type="button" className={actionClass + ' mt-4'} onClick={reloadList}>Försök igen</button>
       </div>
     )
   }
@@ -130,10 +143,16 @@ function AdminSponsors({ onSessionExpired }: { onSessionExpired: () => void }) {
             <h3 id="sponsor-editor-heading" className="mb-6 font-heading text-2xl">{editing ? `Redigera ${editing.name}` : 'Ny sponsor'}</h3>
             <label>Namn<input name="name" autoFocus required maxLength={150} defaultValue={editing?.name} /></label>
             {editing?.image && (
-              <img src={editing.image} alt={`Nuvarande bild för ${editing.name}`} className="mb-3 h-20 w-auto max-w-full object-contain" />
+              <>
+                <img src={editing.image} alt={`Nuvarande bild för ${editing.name}`} className="mb-3 h-20 w-auto max-w-full object-contain" />
+                <label className="flex! items-center gap-3">
+                  <input type="checkbox" className="m-0! min-h-0! w-auto!" checked={removeLogo} onChange={(event) => setRemoveLogo(event.target.checked)} />
+                  Ta bort logotyp
+                </label>
+              </>
             )}
             <label>Logotyp (valfri, högst 512 kB)
-              <input type="file" name="image" accept="image/png,image/jpeg,image/webp" />
+              <input type="file" name="image" accept="image/png,image/jpeg,image/webp" disabled={removeLogo} />
             </label>
             <div className="mt-4 flex flex-wrap gap-3">
               <button className="admin-button mt-0! w-auto!" type="submit">{pending ? 'Sparar…' : 'Spara'}</button>
