@@ -56,9 +56,11 @@ npm ci
 
 ### 2. Set up the database
 
-Create a database named `roslagensbwk` with the `utf8mb4` character set. Using a MySQL client, select that database and execute the files in [`backend/migrations`](backend/migrations) in numeric order, from `001_board_members.sql` through `008_news.sql`.
+Create a database named `roslagensbwk` with the `utf8mb4` character set. Using a MySQL client, select that database and execute the files in [`backend/migrations`](backend/migrations) in numeric order, from `001_board_members.sql` through `011_sponsors.sql`.
 
 The first migration explicitly selects `roslagensbwk`. If you use a different database name, adjust that statement before running it and set `DB_NAME` accordingly. The migrations are applied manually; there is no migration runner or migration history table. Do not rerun all migrations against an existing schema.
+
+Before deploying the teams and sponsors admin pages, apply `010_teams.sql` and `011_sponsors.sql` if their respective tables are missing. Both tables start empty. Admins can add teams with their series and result links. Each sponsor can have a PNG, JPEG, or WebP logo up to 512 KiB.
 
 ### 3. Configure the backend
 

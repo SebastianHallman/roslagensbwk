@@ -13,6 +13,8 @@ import AdminBoard from '../components/AdminBoard'
 import AdminInvitations from '../components/AdminInvitations'
 import AdminTournaments from '../components/AdminTournaments'
 import AdminNews from '../components/AdminNews'
+import AdminTeams from '../components/AdminTeams'
+import AdminSponsors from '../components/AdminSponsors'
 
 type AdminUser = { id: number; email: string; role: string }
 type SessionState = 'checking' | 'ready' | 'error'
@@ -31,7 +33,7 @@ function AdminPage() {
   const headingRef = useRef<HTMLHeadingElement>(null)
   const authViewChanged = useRef(false)
   const path = pathname.replace(/\/+$/, '')
-  const panelTitle = ({ '/admin': 'Ditt konto', '/admin/styrelsen': 'Styrelsen', '/admin/inbjudningar': 'Inbjudningar', '/admin/tavlingar': 'Tävlingar', '/admin/nyheter': 'Nyheter' } as Record<string, string>)[path] ?? 'Sidan finns inte'
+  const panelTitle = ({ '/admin': 'Ditt konto', '/admin/styrelsen': 'Styrelsen', '/admin/inbjudningar': 'Inbjudningar', '/admin/tavlingar': 'Tävlingar', '/admin/nyheter': 'Nyheter', '/admin/lag': 'Lag', '/admin/sponsorer': 'Sponsorer' } as Record<string, string>)[path] ?? 'Sidan finns inte'
 
   useEffect(() => {
     if (authViewChanged.current) headingRef.current?.focus()
@@ -134,6 +136,8 @@ function AdminPage() {
                 <Route path="inbjudningar" element={<AdminInvitations disabled={busy} onSessionExpired={handleSessionExpired} />} />
                 <Route path="tavlingar" element={<fieldset disabled={busy} className="min-w-0 border-0 p-0"><AdminTournaments onSessionExpired={handleSessionExpired} /></fieldset>} />
                 <Route path="nyheter" element={<fieldset disabled={busy} className="min-w-0 border-0 p-0"><AdminNews onSessionExpired={handleSessionExpired} /></fieldset>} />
+                <Route path="lag" element={<fieldset disabled={busy} className="min-w-0 border-0 p-0"><AdminTeams onSessionExpired={handleSessionExpired} /></fieldset>} />
+                <Route path="sponsorer" element={<fieldset disabled={busy} className="min-w-0 border-0 p-0"><AdminSponsors onSessionExpired={handleSessionExpired} /></fieldset>} />
                 <Route path="*" element={<Link className="underline underline-offset-4" to="/admin">Till ditt konto</Link>} />
               </Routes>
             ) : showForgotPassword ? (

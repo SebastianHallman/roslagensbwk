@@ -1,6 +1,10 @@
 import teamData from '../data/teamData.js'
+import { useTeams } from '../api/teams'
+
+const fallback = teamData.map((team) => ({ ...team, id: Number(team.id) }))
 
 function ClubIntroduction() {
+  const teams = useTeams(fallback)
   return (
     <div className="bg-black md:bg-[linear-gradient(to_right,var(--color-black)_50%,var(--color-warm-white)_50%)]">
       <div className="mx-auto grid md:w-[calc(100%_-_3rem)] md:max-w-[76rem] md:grid-cols-2">
@@ -34,13 +38,14 @@ function ClubIntroduction() {
             Våra lag
           </h2>
           <ul className="grid list-none gap-6 p-0 min-[30rem]:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
-            {teamData.map((team) => (
+            {teams.length === 0 && <li>Inga lag visas just nu.</li>}
+            {teams.map((team) => (
               <li key={team.id} className="min-w-0 rounded-lg bg-white p-6">
                 <h3 className="mb-2 font-heading text-xl leading-tight">{team.name}</h3>
-                {team.series.length > 0 ? (
+                {(team.series?.length ?? 0) > 0 ? (
                   <ul className="grid list-none gap-3 p-0 text-sm">
-                    {team.series.map((series) => (
-                      <li key={series.id} className="break-words">
+                    {team.series?.map((series, index) => (
+                      <li key={index} className="break-words">
                         {series.url ? (
                           <a className="underline underline-offset-4 hover:decoration-2 focus-visible:outline-black" href={series.url}>
                             {series.name}
