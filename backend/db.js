@@ -405,6 +405,7 @@ async function deleteNews(id) {
 }
 
 module.exports = {
+    pool,
     testConnection,
     getBoardMembers,
     getAdminBoardMembers,

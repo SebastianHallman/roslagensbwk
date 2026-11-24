@@ -1,6 +1,7 @@
-import teamData from '../data/teamData.js'
+import { useTeams } from '../api/teams'
 
 function ClubIntroduction() {
+  const { status, teams } = useTeams()
   return (
     <div className="bg-black md:bg-[linear-gradient(to_right,var(--color-black)_50%,var(--color-warm-white)_50%)]">
       <div className="mx-auto grid md:w-[calc(100%_-_3rem)] md:max-w-[76rem] md:grid-cols-2">
@@ -33,14 +34,19 @@ function ClubIntroduction() {
           <h2 id="teams-heading" className="mb-10 text-center text-3xl leading-tight lg:text-4xl">
             Våra lag
           </h2>
-          <ul className="grid list-none gap-6 p-0 min-[30rem]:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
-            {teamData.map((team) => (
+          <div role="status">
+            {status === 'loading' && 'Hämtar lag…'}
+            {status === 'error' && 'Det gick inte att hämta lagen.'}
+            {status === 'ready' && teams.length === 0 && 'Inga lag visas just nu.'}
+          </div>
+          <ul hidden={teams.length === 0} className="grid list-none gap-6 p-0 min-[30rem]:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
+            {teams.map((team) => (
               <li key={team.id} className="min-w-0 rounded-lg bg-white p-6">
-                <h3 className="mb-2 font-heading text-xl leading-tight">{team.name}</h3>
-                {team.series.length > 0 ? (
+                <h3 className="mb-2 wrap-anywhere font-heading text-xl leading-tight">{team.name}</h3>
+                {(team.series?.length ?? 0) > 0 ? (
                   <ul className="grid list-none gap-3 p-0 text-sm">
-                    {team.series.map((series) => (
-                      <li key={series.id} className="break-words">
+                    {team.series?.map((series, index) => (
+                      <li key={index} className="break-words">
                         {series.url ? (
                           <a className="underline underline-offset-4 hover:decoration-2 focus-visible:outline-black" href={series.url}>
                             {series.name}

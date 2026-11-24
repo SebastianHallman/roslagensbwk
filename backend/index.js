@@ -9,6 +9,8 @@ const authRoutes = require('./routes/auth');
 const tournamentRoutes = require('./routes/tournaments');
 const newsRoutes = require('./routes/news');
 const contactRoutes = require('./routes/contact');
+const teamRoutes = require('./routes/teams');
+const sponsorRoutes = require('./routes/sponsors');
 
 const app = express();
 
@@ -27,8 +29,10 @@ app.use(cors({
 if (!frontendOrigin) {
     throw new Error('FRONTEND_URL is not defined in the environment variables.');
 }
-app.use(jsonBody);
 app.use(sessionConfig);
+app.use('/teams', teamRoutes);
+app.use('/sponsors', sponsorRoutes);
+app.use(jsonBody);
 app.use('/board', boardRoutes);
 app.use('/auth', authRoutes);
 app.use('/tournaments', tournamentRoutes);

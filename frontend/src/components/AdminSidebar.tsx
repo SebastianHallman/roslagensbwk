@@ -15,6 +15,8 @@ function MenuContent({ email, busy, onSignOut, onNavigate }: Props & { onNavigat
         <ul>
           <li><NavLink to="/admin/tavlingar" end onClick={onNavigate}>Tävlingar</NavLink></li>
           <li><NavLink to="/admin/nyheter" end onClick={onNavigate}>Nyheter</NavLink></li>
+          <li><NavLink to="/admin/lag" end onClick={onNavigate}>Lag</NavLink></li>
+          <li><NavLink to="/admin/sponsorer" end onClick={onNavigate}>Sponsorer</NavLink></li>
           <li><NavLink to="/admin/styrelsen" end onClick={onNavigate}>Styrelsen</NavLink></li>
           <li><NavLink to="/admin/inbjudningar" end onClick={onNavigate}>Inbjudningar</NavLink></li>
         </ul>
